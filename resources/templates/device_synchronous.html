@@ -405,6 +405,56 @@
             border-color: var(--term-green);
         }
 
+        /* 文本输入区样式 */
+        .gc-input-bar {
+            display: flex;
+            gap: 8px;
+            padding: 10px 15px;
+            background: var(--term-darker);
+            border-top: 1px solid var(--term-border);
+        }
+
+        .gc-text-input {
+            flex: 1;
+            background: var(--term-black);
+            border: 1px solid var(--term-border);
+            color: var(--term-green);
+            padding: 8px 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .gc-text-input:focus {
+            border-color: var(--term-green);
+            box-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
+        }
+
+        .gc-text-input::placeholder {
+            color: var(--term-dim);
+        }
+
+        .gc-input-btn {
+            background: var(--term-dark);
+            border: 1px solid var(--term-border);
+            color: var(--term-green);
+            padding: 8px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gc-input-btn:hover {
+            background: var(--term-green);
+            color: var(--term-black);
+        }
+
+        .gc-input-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
         .gc-device-card.is-master {
             border-color: var(--term-green);
             box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
@@ -563,7 +613,7 @@
 
             <section class="gc-master-screen" id="screen">
                 <canvas id="bgCanvas0" class="gc-screen-canvas" :style="canvasStyle"></canvas>
-                <canvas id="fgCanvas" class="gc-screen-canvas" :style="canvasStyle" style="position: absolute;"></canvas>
+                <canvas id="fgCanvas" class="gc-screen-canvas" :style="canvasStyle" style="position: absolute; pointer-events: none;"></canvas>
                 <span class="gc-finger finger-0"></span>
                 <span class="gc-finger finger-1"></span>
             </section>
@@ -596,6 +646,29 @@
                         <polyline points="12 19 5 12 12 5"/>
                     </svg>
                     <span>BACK</span>
+                </button>
+            </div>
+
+            <!-- 文本输入区 -->
+            <div class="gc-input-bar">
+                <input type="text"
+                       class="gc-text-input"
+                       v-model="inputText"
+                       @keyup.enter="sendText"
+                       placeholder="输入文本，按 Enter 发送到所有设备..."
+                       title="支持中文输入">
+                <button class="gc-input-btn" @click="sendText" title="发送文本">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"/>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    </svg>
+                </button>
+                <button class="gc-input-btn" @click="clearText" title="清空 (发送删除键)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
+                        <line x1="18" y1="9" x2="12" y2="15"/>
+                        <line x1="12" y1="9" x2="18" y2="15"/>
+                    </svg>
                 </button>
             </div>
         </div>
@@ -749,6 +822,7 @@ window.app = new Vue({
         imageBlobBuffer: [],
         rotation: 0,
         cursor: {},
+        inputText: '',  // 文本输入框内容
     },
     computed: {
         deviceUrl: function() {
@@ -941,6 +1015,40 @@ window.app = new Vue({
                 }));
             }
             return $.when.apply($, results);
+        },
+
+        // 发送文本到所有设备
+        sendText: function() {
+            var text = this.inputText.trim();
+            if (!text) return;
+
+            console.log('[INPUT] Sending text to all devices:', text);
+
+            // 发送到所有设备
+            for (var i = 0; i < deviceList.length; i++) {
+                fetch('/inspector/' + deviceList[i].udid + '/input', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                })
+                .then(function(res) {
+                    console.log('[INPUT] Text sent successfully');
+                })
+                .catch(function(err) {
+                    console.error('[INPUT] Error:', err);
+                });
+            }
+
+            // 清空输入框
+            this.inputText = '';
+        },
+
+        // 清空文本 (发送删除键清除当前输入)
+        clearText: function() {
+            // 发送多个删除键来清除设备上的输入
+            for (var i = 0; i < 50; i++) {
+                this.keyevent('DEL');
+            }
         },
 
         resizeScreen: function(img) {
@@ -1140,19 +1248,26 @@ window.app = new Vue({
                 // 使用 fetch + keepalive 发送命令 (不阻塞)
                 sendToAllDevices: function(action, params) {
                     var payload = JSON.stringify(Object.assign({ action: action }, params));
+                    console.log('[TOUCH] Sending to all devices:', action, params);
 
-                    // 并行发送到所有设备 (使用 navigator.sendBeacon 或 fetch keepalive)
+                    // 并行发送到所有设备
                     for (var i = 0; i < deviceList.length; i++) {
                         var udid = deviceList[i].udid;
                         var url = '/inspector/' + udid + '/touch';
 
-                        // 使用 fetch with keepalive (非阻塞，即使页面关闭也会发送)
+                        // 使用 fetch (非阻塞)
                         fetch(url, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: payload,
                             keepalive: true
-                        }).catch(function() {}); // 忽略错误，保持流畅
+                        })
+                        .then(function(res) {
+                            console.log('[TOUCH] Response from', udid, ':', res.status);
+                        })
+                        .catch(function(err) {
+                            console.error('[TOUCH] Error sending to', udid, ':', err);
+                        });
                     }
                 },
 
@@ -1195,16 +1310,34 @@ window.app = new Vue({
                 },
 
                 touchUp: function(id) {
-                    if (!this.touchStart) return;
+                    if (!this.touchStart) {
+                        console.warn('[TOUCH] touchStart is null');
+                        return;
+                    }
 
                     var canvas = self.canvas.bg;
-                    var startX = Math.floor(this.touchStart.xP * canvas.width);
-                    var startY = Math.floor(this.touchStart.yP * canvas.height);
+
+                    // 获取设备实际分辨率 (从 deviceList)
+                    var masterDevice = deviceList[self.masterIndex] || deviceList[0];
+                    var deviceWidth = masterDevice ? masterDevice.width : canvas.width;
+                    var deviceHeight = masterDevice ? masterDevice.height : canvas.height;
+
+                    // 如果 canvas 尺寸无效，使用设备尺寸
+                    if (!canvas.width || canvas.width < 100) {
+                        deviceWidth = masterDevice ? masterDevice.width : 1080;
+                        deviceHeight = masterDevice ? masterDevice.height : 1920;
+                    } else {
+                        deviceWidth = canvas.width;
+                        deviceHeight = canvas.height;
+                    }
+
+                    var startX = Math.floor(this.touchStart.xP * deviceWidth);
+                    var startY = Math.floor(this.touchStart.yP * deviceHeight);
 
                     // 获取最后的触点
                     var lastPoint = this.touchPoints[this.touchPoints.length - 1] || this.touchStart;
-                    var endX = Math.floor(lastPoint.xP * canvas.width);
-                    var endY = Math.floor(lastPoint.yP * canvas.height);
+                    var endX = Math.floor(lastPoint.xP * deviceWidth);
+                    var endY = Math.floor(lastPoint.yP * deviceHeight);
 
                     // 计算移动距离
                     var deltaXP = Math.abs(lastPoint.xP - this.touchStart.xP);
@@ -1212,6 +1345,13 @@ window.app = new Vue({
 
                     // 计算持续时间
                     var duration = performance.now() - this.touchStart.time;
+
+                    console.log('[TOUCH] touchUp:', {
+                        start: { x: startX, y: startY },
+                        end: { x: endX, y: endY },
+                        delta: { xP: deltaXP, yP: deltaYP },
+                        deviceSize: { w: deviceWidth, h: deviceHeight }
+                    });
 
                     if (deltaXP > this.swipeThreshold || deltaYP > this.swipeThreshold) {
                         // 滑动操作 - 根据实际滑动时间调整

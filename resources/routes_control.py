@@ -483,6 +483,7 @@ async def inspector_touch(request: web.Request):
             action = data.get("action", "click")
             x = data.get("x")
             y = data.get("y")
+            logger.info(f"[TOUCH] {udid}: action={action}, x={x}, y={y}")
 
             # 验证坐标
             if x is None or y is None:
