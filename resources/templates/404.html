@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>404 - 页面未找到 | CloudControl</title>
+  <link rel="stylesheet" href="/static/css/cybertech-theme.css">
+  <style>
+    .cc-error-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--cc-space-xl);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cc-error-code {
+      font-family: var(--cc-font-display);
+      font-size: 12rem;
+      font-weight: 900;
+      color: transparent;
+      background: linear-gradient(135deg, var(--cc-neon-cyan) 0%, var(--cc-neon-purple) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      line-height: 1;
+      margin-bottom: var(--cc-space-lg);
+      text-shadow: 0 0 80px rgba(0, 245, 255, 0.5);
+      animation: glitch-skew 1s infinite linear alternate-reverse;
+    }
+
+    .cc-error-title {
+      font-family: var(--cc-font-heading);
+      font-size: 2rem;
+      color: var(--cc-text-primary);
+      margin-bottom: var(--cc-space-md);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+    }
+
+    .cc-error-message {
+      font-family: var(--cc-font-mono);
+      font-size: 1rem;
+      color: var(--cc-text-muted);
+      max-width: 500px;
+      margin-bottom: var(--cc-space-xl);
+    }
+
+    .cc-error-actions {
+      display: flex;
+      gap: var(--cc-space-md);
+    }
+
+    .cc-scanlines {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.1) 0px,
+        rgba(0, 0, 0, 0.1) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      pointer-events: none;
+      opacity: 0.3;
+    }
+
+    @keyframes glitch-skew {
+      0% { transform: skew(0deg); }
+      20% { transform: skew(-1deg); }
+      40% { transform: skew(0.5deg); }
+      60% { transform: skew(-0.5deg); }
+      80% { transform: skew(1deg); }
+      100% { transform: skew(0deg); }
+    }
+
+    @media (max-width: 768px) {
+      .cc-error-code {
+        font-size: 6rem;
+      }
+
+      .cc-error-title {
+        font-size: 1.5rem;
+      }
+
+      .cc-error-actions {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="cc-error-page">
+    <div class="cc-scanlines"></div>
+
+    <div class="cc-error-code" data-text="404">404</div>
+
+    <h1 class="cc-error-title">页面未找到</h1>
+
+    <p class="cc-error-message">
+      // ERROR: TARGET_NOT_FOUND<br>
+      // 请求的资源不存在或已被移除
+    </p>
+
+    <div class="cc-error-actions">
+      <a href="/" class="cc-btn cc-btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        返回首页
+      </a>
+      <button onclick="history.back()" class="cc-btn cc-btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="19" y1="12" x2="5" y2="12"/>
+          <polyline points="12 19 5 12 12 5"/>
+        </svg>
+        返回上页
+      </button>
+    </div>
+  </div>
+</body>
+</html>

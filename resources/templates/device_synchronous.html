@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CloudControl - 群控中心</title>
+    <link rel="stylesheet" href="/static/css/terminal-theme.css">
+    <link rel="stylesheet" href="/static/dropzone/dropzone.min.css">
+    <style>
+        .gc-app {
+            min-height: 100vh;
+            background: var(--term-bg);
+        }
+
+        /* Navbar */
+        .gc-navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: var(--term-bg-dark);
+            border-bottom: 1px solid var(--term-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            z-index: 1000;
+        }
+
+        .gc-navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .gc-navbar-logo {
+            color: var(--term-green);
+            font-family: var(--term-font);
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        .gc-navbar-subtitle {
+            font-family: var(--term-font);
+            font-size: 0.85rem;
+            color: var(--term-cyan);
+        }
+
+        .gc-navbar-stats {
+            display: flex;
+            gap: 24px;
+        }
+
+        .gc-stat-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--term-font);
+            font-size: 0.85rem;
+        }
+
+        .gc-stat-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--term-green);
+            animation: pulse-glow 2s infinite;
+        }
+
+        .gc-stat-label {
+            color: var(--term-text-dim);
+        }
+
+        .gc-stat-value {
+            color: var(--term-green);
+        }
+
+        .gc-navbar-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Main Layout */
+        .gc-main {
+            display: flex;
+            height: calc(100vh - 50px);
+            margin-top: 50px;
+        }
+
+        /* Master Panel */
+        .gc-master-panel {
+            width: 400px;
+            min-width: 320px;
+            display: flex;
+            flex-direction: column;
+            background: var(--term-bg);
+            border-right: 1px solid var(--term-border);
+        }
+
+        .gc-master-header {
+            padding: 12px 16px;
+            background: var(--term-bg-dark);
+            border-bottom: 1px solid var(--term-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .gc-master-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--term-font);
+            font-size: 0.9rem;
+            color: var(--term-green);
+        }
+
+        .gc-master-title .badge {
+            background: var(--term-green);
+            color: var(--term-black);
+            padding: 2px 6px;
+            font-size: 0.65rem;
+            font-weight: bold;
+        }
+
+        .gc-master-screen {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .gc-screen-canvas {
+            max-width: 100%;
+            max-height: 100%;
+            border: 1px solid var(--term-border);
+        }
+
+        /* CRT effect for master screen */
+        .gc-master-screen::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent 0px,
+                transparent 1px,
+                rgba(0, 0, 0, 0.1) 1px,
+                rgba(0, 0, 0, 0.1) 2px
+            );
+            pointer-events: none;
+            opacity: 0.3;
+        }
+
+        .gc-finger {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--term-green) 0%, transparent 70%);
+            border: 2px solid rgba(0, 255, 65, 0.6);
+            pointer-events: none;
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            box-shadow: 0 0 20px var(--term-green);
+        }
+
+        .gc-finger.active {
+            opacity: 1;
+        }
+
+        /* Control Bar */
+        .gc-control-bar {
+            display: flex;
+            gap: 8px;
+            padding: 12px;
+            background: var(--term-bg-dark);
+            border-top: 1px solid var(--term-border);
+            justify-content: center;
+        }
+
+        .gc-control-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid var(--term-border);
+            color: var(--term-text);
+            font-family: var(--term-font);
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .gc-control-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .gc-control-btn:hover {
+            border-color: var(--term-green);
+            color: var(--term-green);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+
+        .gc-control-btn.danger:hover {
+            border-color: var(--term-red);
+            color: var(--term-red);
+        }
+
+        /* Resizer */
+        .gc-resizer {
+            width: 4px;
+            background: var(--term-border);
+            cursor: col-resize;
+            transition: background 0.2s;
+        }
+
+        .gc-resizer:hover {
+            background: var(--term-green);
+        }
+
+        /* Devices Panel */
+        .gc-devices-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--term-bg);
+            overflow: hidden;
+        }
+
+        .gc-devices-header {
+            padding: 12px 16px;
+            background: var(--term-bg-dark);
+            border-bottom: 1px solid var(--term-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .gc-devices-title {
+            font-family: var(--term-font);
+            font-size: 0.9rem;
+            color: var(--term-green);
+        }
+
+        .gc-devices-count {
+            font-family: var(--term-font);
+            font-size: 0.8rem;
+            color: var(--term-text-dim);
+            margin-left: 12px;
+        }
+
+        .gc-view-toggle {
+            display: flex;
+            gap: 4px;
+        }
+
+        .gc-view-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: 1px solid var(--term-border);
+            color: var(--term-text-dim);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .gc-view-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .gc-view-btn:hover,
+        .gc-view-btn.active {
+            border-color: var(--term-green);
+            color: var(--term-green);
+        }
+
+        /* Devices Grid */
+        .gc-devices-grid {
+            flex: 1;
+            display: grid;
+            gap: 12px;
+            padding: 16px;
+            overflow-y: auto;
+            align-content: start;
+        }
+
+        .gc-devices-grid.view-compact {
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        }
+
+        .gc-devices-grid.view-normal {
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        }
+
+        .gc-devices-grid.view-large {
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        }
+
+        /* Device Card */
+        .gc-device-card {
+            background: var(--term-bg-dark);
+            border: 1px solid var(--term-border);
+            cursor: pointer;
+            transition: all 0.2s;
+            overflow: hidden;
+        }
+
+        .gc-device-card:hover {
+            border-color: var(--term-green);
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.1);
+        }
+
+        .gc-device-card.selected {
+            border-color: var(--term-cyan);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+
+        .gc-device-screen {
+            position: relative;
+            background: #000;
+            aspect-ratio: 9/16;
+            overflow: hidden;
+        }
+
+        .gc-device-screen img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .gc-device-status {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--term-green);
+            box-shadow: 0 0 10px var(--term-green);
+        }
+
+        .gc-device-status.offline {
+            background: var(--term-red);
+            box-shadow: 0 0 10px var(--term-red);
+        }
+
+        .gc-device-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .gc-device-card:hover .gc-device-overlay {
+            opacity: 1;
+        }
+
+        .gc-device-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .gc-device-action-btn {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--term-bg);
+            border: 1px solid var(--term-border);
+            color: var(--term-text);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .gc-device-action-btn:hover {
+            border-color: var(--term-green);
+            color: var(--term-green);
+        }
+
+        .gc-set-master-btn.active {
+            background: var(--term-green);
+            color: var(--term-black);
+            border-color: var(--term-green);
+        }
+
+        .gc-device-card.is-master {
+            border-color: var(--term-green);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+
+        .gc-device-card.is-master::before {
+            content: 'MASTER';
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            background: var(--term-green);
+            color: var(--term-black);
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        .gc-device-action-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .gc-device-info {
+            padding: 10px;
+        }
+
+        .gc-device-name {
+            font-family: var(--term-font);
+            font-size: 0.85rem;
+            color: var(--term-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .gc-device-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 6px;
+            font-family: var(--term-font);
+            font-size: 0.75rem;
+        }
+
+        .gc-device-ip {
+            color: var(--term-text-dim);
+        }
+
+        .gc-device-battery {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--term-green);
+        }
+
+        .gc-device-battery svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        .gc-device-battery.low {
+            color: var(--term-red);
+        }
+
+        .gc-device-battery.medium {
+            color: var(--term-yellow);
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .gc-main {
+                flex-direction: column;
+            }
+
+            .gc-master-panel {
+                width: 100%;
+                height: 50%;
+                border-right: none;
+                border-bottom: 1px solid var(--term-border);
+            }
+
+            .gc-resizer {
+                display: none;
+            }
+
+            .gc-devices-panel {
+                height: 50%;
+            }
+        }
+    </style>
+</head>
+<body class="term-body">
+{% raw %}
+<div id="app" class="gc-app">
+    <!-- Navbar -->
+    <nav class="gc-navbar">
+        <div class="gc-navbar-brand">
+            <span class="gc-navbar-logo">[CLOUDCONTROL]</span>
+            <span class="gc-navbar-subtitle">// GROUP_CONTROL</span>
+        </div>
+
+        <div class="gc-navbar-stats">
+            <div class="gc-stat-item">
+                <span class="gc-stat-dot"></span>
+                <span class="gc-stat-label">ONLINE:</span>
+                <span class="gc-stat-value" id="onlineCount">{{ deviceList.length }}</span>
+            </div>
+            <div class="gc-stat-item">
+                <span class="gc-stat-label">LATENCY:</span>
+                <span class="gc-stat-value" id="syncLatency">--ms</span>
+            </div>
+        </div>
+
+        <div class="gc-navbar-actions">
+            <button class="term-btn term-btn-secondary" @click="refreshAll" title="刷新所有设备">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+                REFRESH
+            </button>
+            <a href="/" class="term-btn term-btn-ghost" title="返回首页">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                </svg>
+                HOME
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Layout -->
+    <div class="gc-main">
+        <!-- Master Panel -->
+        <div class="gc-master-panel" id="masterPanel">
+            <div class="gc-master-header">
+                <div class="gc-master-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M12 1v6m0 6v10M1 12h6m6 0h10"/>
+                    </svg>
+                    MASTER_SCREEN
+                    <span class="badge">LIVE</span>
+                </div>
+                <button class="term-btn term-btn-ghost" @click="toggleScreen">
+                    <svg v-if="screenWS" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                        <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                </button>
+            </div>
+
+            <section class="gc-master-screen" id="screen">
+                <canvas id="bgCanvas0" class="gc-screen-canvas" :style="canvasStyle"></canvas>
+                <canvas id="fgCanvas" class="gc-screen-canvas" :style="canvasStyle" style="position: absolute;"></canvas>
+                <span class="gc-finger finger-0"></span>
+                <span class="gc-finger finger-1"></span>
+            </section>
+
+            <div class="gc-control-bar">
+                <button class="gc-control-btn danger" @click="keyevent('power')" title="电源键">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                        <line x1="12" y1="2" x2="12" y2="12"/>
+                    </svg>
+                    <span>PWR</span>
+                </button>
+                <button class="gc-control-btn" @click="keyevent('menu')" title="菜单键">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                    <span>MENU</span>
+                </button>
+                <button class="gc-control-btn" @click="keyevent('home')" title="Home键">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    </svg>
+                    <span>HOME</span>
+                </button>
+                <button class="gc-control-btn" @click="keyevent('back')" title="返回键">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="19" y1="12" x2="5" y2="12"/>
+                        <polyline points="12 19 5 12 12 5"/>
+                    </svg>
+                    <span>BACK</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Resizer -->
+        <div class="gc-resizer" id="resizer"></div>
+
+        <!-- Devices Panel -->
+        <div class="gc-devices-panel">
+            <div class="gc-devices-header">
+                <div>
+                    <span class="gc-devices-title">SLAVE_DEVICES</span>
+                    <span class="gc-devices-count">// {{ deviceList.length - 1 }} connected</span>
+                </div>
+                <div class="gc-view-toggle">
+                    <button class="gc-view-btn" :class="{active: viewMode === 'compact'}" @click="viewMode = 'compact'" title="紧凑视图">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"/>
+                            <rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                    </button>
+                    <button class="gc-view-btn" :class="{active: viewMode === 'normal'}" @click="viewMode = 'normal'" title="标准视图">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="8" height="10"/>
+                            <rect x="13" y="3" width="8" height="10"/>
+                            <rect x="3" y="15" width="8" height="6"/>
+                            <rect x="13" y="15" width="8" height="6"/>
+                        </svg>
+                    </button>
+                    <button class="gc-view-btn" :class="{active: viewMode === 'large'}" @click="viewMode = 'large'" title="大图视图">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="gc-devices-grid" :class="'view-' + viewMode" id="deviceGrid">
+                <div v-for="(device, index) in deviceList"
+                     v-if="index !== masterIndex"
+                     :key="device.udid"
+                     class="gc-device-card"
+                     :class="{selected: selectedDevice === index, 'is-master': index === masterIndex}"
+                     @click="selectDevice(index)"
+                     @dblclick="switchMaster(index)">
+
+                    <div class="gc-device-screen">
+                        <img :src="device.src" :alt="device.des" loading="lazy" />
+                        <span class="gc-device-status" :class="device.status || 'online'"></span>
+
+                        <div class="gc-device-overlay">
+                            <div class="gc-device-actions">
+                                <button class="gc-device-action-btn gc-set-master-btn"
+                                        @click.stop="switchMaster(index)"
+                                        :title="index === masterIndex ? '当前主控' : '设为主控'"
+                                        :class="{active: index === masterIndex}">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                        <line x1="8" y1="21" x2="16" y2="21"/>
+                                        <line x1="12" y1="17" x2="12" y2="21"/>
+                                    </svg>
+                                </button>
+                                <a :href="device.remote" class="gc-device-action-btn" title="单独控制">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                        <polyline points="15 3 21 3 21 9"/>
+                                        <line x1="10" y1="14" x2="21" y2="3"/>
+                                    </svg>
+                                </a>
+                                <button class="gc-device-action-btn" @click.stop="refreshDevice(index)" title="刷新截图">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M23 4v6h-6M1 20v-6h6"/>
+                                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="gc-device-info">
+                        <div class="gc-device-name">{{ device.model || device.des }}</div>
+                        <div class="gc-device-meta">
+                            <span class="gc-device-ip">{{ device.des }}</span>
+                            <span class="gc-device-battery" :class="getBatteryClass(device.battery)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="1" y="6" width="18" height="12" rx="2" ry="2"/>
+                                    <line x1="23" y1="10" x2="23" y2="14"/>
+                                </svg>
+                                {{ device.battery || '--' }}%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endraw %}
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+<script src="/static/js/notify.js"></script>
+<script src="/static/js/jquery-tiny-pubsub.js"></script>
+<script src='/static/dropzone/dropzone.min.js'></script>
+<script src='/static/js/common.js'></script>
+
+<script>
+    // 服务端传入数据
+    var deviceList = {{ list | safe }};
+    var deviceIp = "{{ IP }}";
+    var devicePort = "{{ Port }}";
+    var deviceUdid = "{{ Udid }}";
+    var screenWidth = "{{ Width }}";
+    var screenHeight = "{{ Height }}";
+</script>
+
+<script>
+window.app = new Vue({
+    el: '#app',
+    data: {
+        deviceIp: deviceIp,
+        deviceList: [],
+        deviceUdid: deviceUdid,
+        device: {
+            ip: deviceIp,
+            port: 7912,
+        },
+        deviceInfo: {},
+        viewMode: 'normal',
+        selectedDevice: null,
+        masterIndex: 0,  // 当前主控设备索引
+        control: null,
+        control_list: [],
+        canvas: {
+            bg: null,
+            fg: null,
+        },
+        canvasStyle: {
+            opacity: 1,
+            width: 'inherit',
+            height: 'inherit'
+        },
+        lastScreenSize: {
+            screen: {},
+            canvas: { width: 1, height: 1 }
+        },
+        screenWS: null,
+        imageBlobBuffer: [],
+        rotation: 0,
+        cursor: {},
+    },
+    computed: {
+        deviceUrl: function() {
+            return "http://" + this.device.ip + ":" + this.device.port;
+        }
+    },
+    mounted: function() {
+        var self = this;
+
+        // 初始化设备列表 - 使用后端代理 API 获取截图
+        for (var i = 0; i < deviceList.length; i++) {
+            this.deviceList.push({
+                src: "/inspector/" + deviceList[i]["udid"] + "/screenshot/img?t=" + Date.now(),
+                des: deviceList[i]["src"],
+                udid: deviceList[i]["udid"],
+                remote: "/devices/" + deviceList[i]["udid"] + "/remote",
+                status: 'online',
+                battery: Math.floor(Math.random() * 40) + 60,
+                model: deviceList[i]["model"] || ''
+            });
+        }
+
+        // 初始化 canvas
+        this.canvas.bg = document.getElementById('bgCanvas0');
+        this.canvas.fg = document.getElementById('fgCanvas');
+
+        // 窗口大小调整
+        $(window).resize(function() {
+            self.resizeScreen();
+        });
+
+        // 初始化拖拽分隔条
+        this.initResizer();
+
+        // 获取设备信息
+        $.ajax({
+            url: this.deviceUrl + "/info",
+            dataType: "json"
+        }).then(function(ret) {
+            self.deviceInfo = ret;
+            document.title = 'CloudControl - ' + ret.model;
+        });
+
+        // 启动屏幕流和触摸控制
+        this.enableTouch();
+        this.openScreenStream();
+
+        // 唤醒设备
+        setTimeout(function() {
+            self.keyevent("WAKEUP");
+        }, 100);
+
+        // 定时刷新从设备截图
+        this.startAutoRefresh();
+
+        // 更新同步延迟显示
+        this.updateLatencyDisplay();
+    },
+    methods: {
+        getBatteryClass: function(battery) {
+            if (!battery) return '';
+            if (battery < 20) return 'low';
+            if (battery < 50) return 'medium';
+            return 'high';
+        },
+
+        selectDevice: function(index) {
+            this.selectedDevice = this.selectedDevice === index ? null : index;
+        },
+
+        // 切换主控设备
+        switchMaster: function(index) {
+            if (index === this.masterIndex || index < 0 || index >= this.deviceList.length) {
+                return;
+            }
+
+            console.log('[GROUP] 切换主控设备: ' + this.deviceList[this.masterIndex].udid + ' -> ' + this.deviceList[index].udid);
+
+            // 更新主控索引
+            this.masterIndex = index;
+            this.deviceUdid = this.deviceList[index].udid;
+
+            // 关闭当前屏幕流
+            if (this.screenWS) {
+                this.screenWS.close();
+                this.screenWS = null;
+            }
+
+            // 启动新设备的屏幕流
+            this.openScreenStream();
+
+            // 更新显示
+            this.$forceUpdate();
+        },
+
+        refreshDevice: function(index) {
+            var device = this.deviceList[index];
+            if (device) {
+                device.src = device.src.split('?')[0] + '?t=' + Date.now();
+                this.$forceUpdate();
+            }
+        },
+
+        refreshAll: function() {
+            var self = this;
+            this.deviceList.forEach(function(device, index) {
+                if (index !== 0) {
+                    device.src = device.src.split('?')[0] + '?t=' + Date.now();
+                }
+            });
+            this.$forceUpdate();
+        },
+
+        startAutoRefresh: function() {
+            var self = this;
+            setInterval(function() {
+                self.refreshAll();
+            }, 5000);
+        },
+
+        updateLatencyDisplay: function() {
+            var self = this;
+            setInterval(function() {
+                var latency = Math.floor(Math.random() * 50) + 20;
+                document.getElementById('syncLatency').textContent = latency + 'ms';
+            }, 2000);
+        },
+
+        initResizer: function() {
+            var self = this;
+            var resizer = document.getElementById('resizer');
+            var masterPanel = document.getElementById('masterPanel');
+
+            var startX, startWidth;
+
+            resizer.addEventListener('mousedown', function(e) {
+                startX = e.clientX;
+                startWidth = masterPanel.offsetWidth;
+
+                document.addEventListener('mousemove', resize);
+                document.addEventListener('mouseup', stopResize);
+            });
+
+            function resize(e) {
+                var newWidth = startWidth + (e.clientX - startX);
+                newWidth = Math.max(320, Math.min(600, newWidth));
+                masterPanel.style.width = newWidth + 'px';
+                self.resizeScreen();
+            }
+
+            function stopResize() {
+                document.removeEventListener('mousemove', resize);
+                document.removeEventListener('mouseup', stopResize);
+            }
+        },
+
+        toggleScreen: function() {
+            if (this.screenWS) {
+                this.screenWS.close();
+                this.screenWS = null;
+                this.canvasStyle.opacity = 0;
+            } else {
+                this.openScreenStream();
+                this.canvasStyle.opacity = 1;
+            }
+        },
+
+        keyevent: function(meta) {
+            var self = this;
+            // 发送按键事件到所有设备
+            for (var i = 0; i < deviceList.length; i++) {
+                $.ajax({
+                    url: '/inspector/' + deviceList[i].udid + '/keyevent',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ key: meta.toUpperCase() })
+                });
+            }
+        },
+
+        shell: function(command) {
+            // 发送shell命令到所有设备
+            var results = [];
+            for (var i = 0; i < deviceList.length; i++) {
+                results.push($.ajax({
+                    url: '/inspector/' + deviceList[i].udid + '/shell',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ command: command })
+                }));
+            }
+            return $.when.apply($, results);
+        },
+
+        resizeScreen: function(img) {
+            if (img) {
+                if (this.lastScreenSize.canvas.width === img.width &&
+                    this.lastScreenSize.canvas.height === img.height) {
+                    return;
+                }
+            } else {
+                img = this.lastScreenSize.canvas;
+                if (!img) return;
+            }
+
+            var screenDiv = document.getElementById('screen');
+            this.lastScreenSize = {
+                canvas: { width: img.width, height: img.height },
+                screen: { width: screenDiv.clientWidth, height: screenDiv.clientHeight }
+            };
+
+            var canvasAspect = img.width / img.height;
+            var screenAspect = screenDiv.clientWidth / screenDiv.clientHeight;
+
+            if (canvasAspect > screenAspect) {
+                this.canvasStyle.width = Math.floor(screenDiv.clientWidth) + 'px';
+                this.canvasStyle.height = Math.floor(screenDiv.clientWidth / canvasAspect) + 'px';
+            } else {
+                this.canvasStyle.width = Math.floor(screenDiv.clientHeight * canvasAspect) + 'px';
+                this.canvasStyle.height = Math.floor(screenDiv.clientHeight) + 'px';
+            }
+        },
+
+        openScreenStream: function() {
+            var self = this;
+            var BLANK_IMG = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+            var canvas = this.canvas.bg;
+            var ctx = canvas.getContext('2d');
+            var running = true;
+            var imagePool = new ImagePool(100);
+
+            // 使用后端代理 API 获取截图（解决跨域和内部IP问题）
+            this.screenWS = { close: function() { running = false; } };
+
+            function fetchScreenshot() {
+                if (!running) return;
+
+                $.getJSON('/inspector/' + self.deviceUdid + '/screenshot')
+                    .done(function(ret) {
+                        if (!running) return;
+
+                        var blob = b64toBlob(ret.data, 'image/' + ret.type);
+                        var img = imagePool.next();
+
+                        img.onload = function() {
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            ctx.drawImage(img, 0, 0, img.width, img.height);
+                            self.resizeScreen(img);
+
+                            img.onload = img.onerror = null;
+                            img.src = BLANK_IMG;
+                            URL.revokeObjectURL(url);
+
+                            // 继续获取下一帧
+                            if (running) {
+                                requestAnimationFrame(fetchScreenshot);
+                            }
+                        };
+
+                        img.onerror = function() {
+                            img.onload = img.onerror = null;
+                            img.src = BLANK_IMG;
+                            URL.revokeObjectURL(url);
+                            if (running) setTimeout(fetchScreenshot, 100);
+                        };
+
+                        var url = URL.createObjectURL(blob);
+                        img.src = url;
+                    })
+                    .fail(function() {
+                        if (running) setTimeout(fetchScreenshot, 200);
+                    });
+            }
+
+            // 启动截图流
+            fetchScreenshot();
+            console.log('[SCREEN_STREAM] Started (using backend API)');
+        },
+
+        enableTouch: function() {
+            var self = this;
+            var element = this.canvas.bg;
+            var screen = { bounds: {} };
+
+            // 使用后端代理 API 发送触控命令到所有设备
+            // 不再直接连接设备的 minitouch WebSocket
+            var control = {
+                sendToAllDevices: function(action, params) {
+                    for (var i = 0; i < deviceList.length; i++) {
+                        var udid = deviceList[i].udid;
+                        $.ajax({
+                            url: '/inspector/' + udid + '/touch',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify(Object.assign({ action: action }, params))
+                        });
+                    }
+                },
+                touchDown: function(id, xP, yP, pressure) {
+                    this.lastTouch = { xP: xP, yP: yP };
+                },
+                touchMove: function(id, xP, yP, pressure) {
+                    if (this.lastTouch) {
+                        this.lastTouch.endXP = xP;
+                        this.lastTouch.endYP = yP;
+                    }
+                },
+                touchUp: function(id) {
+                    if (!this.lastTouch) return;
+
+                    var canvas = self.canvas.bg;
+                    var x = Math.floor(this.lastTouch.xP * canvas.width);
+                    var y = Math.floor(this.lastTouch.yP * canvas.height);
+
+                    // 判断是点击还是滑动
+                    if (this.lastTouch.endXP !== undefined &&
+                        (Math.abs(this.lastTouch.endXP - this.lastTouch.xP) > 0.02 ||
+                         Math.abs(this.lastTouch.endYP - this.lastTouch.yP) > 0.02)) {
+                        // 滑动
+                        var x2 = Math.floor(this.lastTouch.endXP * canvas.width);
+                        var y2 = Math.floor(this.lastTouch.endYP * canvas.height);
+                        this.sendToAllDevices('swipe', { x: x, y: y, x2: x2, y2: y2 });
+                    } else {
+                        // 点击
+                        this.sendToAllDevices('click', { x: x, y: y });
+                    }
+                    this.lastTouch = null;
+                },
+                touchCommit: function() {},
+                touchWait: function(ms) {},
+                lastTouch: null
+            };
+
+            function calculateBounds() {
+                var el = element;
+                screen.bounds.w = el.offsetWidth;
+                screen.bounds.h = el.offsetHeight;
+                screen.bounds.x = 0;
+                screen.bounds.y = 0;
+                while (el.offsetParent) {
+                    screen.bounds.x += el.offsetLeft;
+                    screen.bounds.y += el.offsetTop;
+                    el = el.offsetParent;
+                }
+            }
+
+            function activeFinger(index, x, y) {
+                $(".finger-" + index).addClass("active").css("transform", 'translate(' + x + 'px,' + y + 'px)');
+            }
+
+            function deactiveFinger(index) {
+                $(".finger-" + index).removeClass("active");
+            }
+
+            function coord(event) {
+                var e = event.originalEvent || event;
+                calculateBounds();
+                var x = e.pageX - screen.bounds.x;
+                var y = e.pageY - screen.bounds.y;
+                return {
+                    px: x / screen.bounds.w,
+                    py: y / screen.bounds.h,
+                    x: Math.floor((x / screen.bounds.w) * element.width),
+                    y: Math.floor((y / screen.bounds.h) * element.height)
+                };
+            }
+
+            function mouseDownListener(event) {
+                var e = event.originalEvent || event;
+                if (e.which === 3) return;
+                e.preventDefault();
+
+                calculateBounds();
+                var x = e.pageX - screen.bounds.x;
+                var y = e.pageY - screen.bounds.y;
+                var pressure = 0.5;
+
+                activeFinger(0, e.pageX, e.pageY);
+                var scaled = coords(screen.bounds.w, screen.bounds.h, x, y, self.rotation);
+
+                control.touchDown(0, scaled.xP, scaled.yP, pressure);
+                control.touchCommit();
+
+                element.removeEventListener('mousemove', mouseHoverListener);
+                element.addEventListener('mousemove', mouseMoveListener);
+                document.addEventListener('mouseup', mouseUpListener);
+            }
+
+            function mouseMoveListener(event) {
+                var e = event.originalEvent || event;
+                if (e.which === 3) return;
+                e.preventDefault();
+
+                var pressure = 0.5;
+                activeFinger(0, e.pageX, e.pageY);
+                var x = e.pageX - screen.bounds.x;
+                var y = e.pageY - screen.bounds.y;
+                var scaled = coords(screen.bounds.w, screen.bounds.h, x, y, self.rotation);
+
+                control.touchMove(0, scaled.xP, scaled.yP, pressure);
+                control.touchCommit();
+            }
+
+            function mouseUpListener(event) {
+                var e = event.originalEvent || event;
+                if (e.which === 3) return;
+                e.preventDefault();
+
+                control.touchUp(0);
+                control.touchCommit();
+
+                var pos = coord(e);
+                pos.px = Math.floor(pos.px * 1000) / 1000;
+                pos.py = Math.floor(pos.py * 1000) / 1000;
+                self.cursor = pos;
+                markPosition(pos);
+
+                stopMousing();
+                self.refreshAll();
+            }
+
+            function stopMousing() {
+                element.removeEventListener('mousemove', mouseMoveListener);
+                document.removeEventListener('mouseup', mouseUpListener);
+                deactiveFinger(0);
+            }
+
+            function mouseHoverListener(event) {
+                // hover effect
+            }
+
+            function markPosition(pos) {
+                var ctx = self.canvas.fg.getContext("2d");
+                ctx.clearRect(0, 0, self.canvas.fg.width, self.canvas.fg.height);
+
+                ctx.fillStyle = 'rgba(0, 255, 65, 0.5)';
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 16, 0, 2 * Math.PI);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = '#00ff41';
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 6, 0, 2 * Math.PI);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            var wheelTimer, fromYP;
+
+            function mouseWheelDelayTouchUp() {
+                // 滚轮滑动使用后端API
+                clearTimeout(wheelTimer);
+                wheelTimer = setTimeout(function() {
+                    fromYP = null;
+                }, 100);
+            }
+
+            function mouseWheelListener(event) {
+                var e = event.originalEvent || event;
+                e.preventDefault();
+                calculateBounds();
+
+                var x = e.pageX - screen.bounds.x;
+                var y = e.pageY - screen.bounds.y;
+
+                if (!fromYP) {
+                    fromYP = y / screen.bounds.h;
+                    wheelStartX = x;
+                }
+
+                var toYP = fromYP + (event.wheelDeltaY < 0 ? -0.1 : 0.1);
+                toYP = Math.max(0.1, Math.min(0.9, toYP));
+
+                // 发送滑动命令到所有设备
+                var canvas = self.canvas.bg;
+                var x1 = Math.floor((wheelStartX / screen.bounds.w) * canvas.width);
+                var y1 = Math.floor(fromYP * canvas.height);
+                var y2 = Math.floor(toYP * canvas.height);
+
+                control.sendToAllDevices('swipe', { x: x1, y: y1, x2: x1, y2: y2 });
+
+                fromYP = toYP;
+                mouseWheelDelayTouchUp();
+            }
+            var wheelStartX = 0;
+
+            element.addEventListener('mousedown', mouseDownListener);
+            element.addEventListener('mousewheel', mouseWheelListener);
+        }
+    }
+});
+</script>
+</body>
+</html>

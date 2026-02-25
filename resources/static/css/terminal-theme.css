@@ -1,0 +1,864 @@
+/* ============================================================
+   CloudControl - Terminal Hacker Theme
+   复古终端黑客风格 - CRT显示器效果
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=Fira+Code:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+/* ============================================================
+   CSS Variables
+   ============================================================ */
+:root {
+  /* === Terminal Colors === */
+  --term-black: #0a0a0a;
+  --term-bg: #0d1117;
+  --term-bg-light: #161b22;
+  --term-border: #30363d;
+
+  /* === Matrix Green (经典绿色) === */
+  --term-green: #00ff41;
+  --term-green-dim: #00cc33;
+  --term-green-glow: rgba(0, 255, 65, 0.6);
+
+  /* === Amber (琥珀色终端) === */
+  --term-amber: #ffb000;
+  --term-amber-dim: #cc8c00;
+  --term-amber-glow: rgba(255, 176, 0, 0.6);
+
+  /* === 当前主题色 (可切换) === */
+  --term-primary: var(--term-green);
+  --term-primary-dim: var(--term-green-dim);
+  --term-primary-glow: var(--term-green-glow);
+
+  /* === 其他颜色 === */
+  --term-cyan: #00ffff;
+  --term-red: #ff3333;
+  --term-yellow: #ffff00;
+  --term-blue: #0099ff;
+  --term-purple: #cc00ff;
+  --term-white: #c9d1d9;
+  --term-gray: #6e7681;
+
+  /* === Typography === */
+  --term-font: 'Fira Code', 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+  --term-font-display: 'VT323', monospace;
+
+  /* === Spacing === */
+  --term-gap: 8px;
+  --term-padding: 16px;
+
+  /* === Effects === */
+  --term-glow: 0 0 5px var(--term-primary), 0 0 10px var(--term-primary-glow);
+  --term-text-shadow: 0 0 5px var(--term-primary-glow), 0 0 10px var(--term-primary-glow);
+  --term-scanline: rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================================
+   CRT Screen Effect
+   ============================================================ */
+body {
+  background: var(--term-black);
+  color: var(--term-primary);
+  font-family: var(--term-font);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* CRT扫描线效果 */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 1px,
+    var(--term-scanline) 1px,
+    var(--term-scanline) 2px
+  );
+}
+
+/* CRT边缘暗角 */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9998;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 60%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+}
+
+/* ============================================================
+   Terminal Window Frame
+   ============================================================ */
+.term-window {
+  background: var(--term-bg);
+  border: 1px solid var(--term-border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(0, 255, 65, 0.1),
+    0 4px 24px rgba(0, 0, 0, 0.5),
+    inset 0 0 60px rgba(0, 255, 65, 0.03);
+}
+
+/* 窗口标题栏 */
+.term-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--term-bg-light);
+  border-bottom: 1px solid var(--term-border);
+}
+
+.term-titlebar-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.term-btn-close,
+.term-btn-min,
+.term-btn-max {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+}
+
+.term-btn-close { background: #ff5f57; }
+.term-btn-min { background: #febc2e; }
+.term-btn-max { background: #28c840; }
+
+.term-titlebar-title {
+  flex: 1;
+  font-family: var(--term-font);
+  font-size: 12px;
+  color: var(--term-gray);
+  text-align: center;
+}
+
+/* 终端内容区 */
+.term-content {
+  padding: var(--term-padding);
+  min-height: 200px;
+}
+
+/* ============================================================
+   Terminal Text Styles
+   ============================================================ */
+.term-prompt {
+  color: var(--term-cyan);
+}
+
+.term-prompt::before {
+  content: '❯ ';
+  color: var(--term-primary);
+}
+
+.term-command {
+  color: var(--term-white);
+}
+
+.term-output {
+  color: var(--term-primary);
+  opacity: 0.9;
+}
+
+.term-error {
+  color: var(--term-red);
+}
+
+.term-warning {
+  color: var(--term-yellow);
+}
+
+.term-success {
+  color: var(--term-primary);
+}
+
+.term-comment {
+  color: var(--term-gray);
+  font-style: italic;
+}
+
+.term-highlight {
+  background: rgba(0, 255, 65, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* 闪烁光标 */
+.term-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background: var(--term-primary);
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ============================================================
+   ASCII Art Header
+   ============================================================ */
+.term-ascii-header {
+  font-family: var(--term-font);
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--term-primary);
+  text-shadow: var(--term-text-shadow);
+  white-space: pre;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+/* ============================================================
+   System Status Display
+   ============================================================ */
+.term-status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 16px;
+  background: rgba(0, 255, 65, 0.02);
+  border: 1px dashed var(--term-border);
+  margin-bottom: 24px;
+  font-family: var(--term-font);
+}
+
+.term-status-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.term-status-label {
+  color: var(--term-gray);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.term-status-value {
+  color: var(--term-primary);
+  font-weight: 500;
+  text-shadow: var(--term-text-shadow);
+}
+
+.term-status-value.online {
+  color: var(--term-primary);
+}
+
+.term-status-value.offline {
+  color: var(--term-red);
+}
+
+.term-status-value.warning {
+  color: var(--term-yellow);
+}
+
+/* 状态指示灯 */
+.term-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--term-primary);
+  box-shadow: 0 0 6px var(--term-primary-glow);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.term-indicator.offline {
+  background: var(--term-red);
+  box-shadow: 0 0 6px rgba(255, 51, 51, 0.6);
+  animation: none;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--term-primary-glow); }
+  50% { opacity: 0.6; box-shadow: 0 0 12px var(--term-primary-glow); }
+}
+
+/* ============================================================
+   Device List (Terminal Style)
+   ============================================================ */
+.term-device-list {
+  border: 1px solid var(--term-border);
+  background: var(--term-bg);
+}
+
+.term-device-header {
+  display: grid;
+  grid-template-columns: 40px 1fr 120px 100px 80px 100px;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--term-bg-light);
+  border-bottom: 1px solid var(--term-border);
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--term-gray);
+  letter-spacing: 0.1em;
+}
+
+.term-device-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 120px 100px 80px 100px;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--term-border);
+  transition: background 0.2s;
+  cursor: pointer;
+}
+
+.term-device-row:hover {
+  background: rgba(0, 255, 65, 0.05);
+}
+
+.term-device-row:last-child {
+  border-bottom: none;
+}
+
+.term-device-index {
+  color: var(--term-gray);
+  font-size: 12px;
+}
+
+.term-device-name {
+  color: var(--term-white);
+  font-weight: 500;
+}
+
+.term-device-name .model {
+  color: var(--term-primary);
+}
+
+.term-device-ip {
+  color: var(--term-cyan);
+  font-size: 13px;
+}
+
+.term-device-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.term-device-status.online {
+  color: var(--term-primary);
+}
+
+.term-device-status.offline {
+  color: var(--term-red);
+}
+
+.term-device-battery {
+  color: var(--term-yellow);
+}
+
+.term-device-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ============================================================
+   Terminal Buttons
+   ============================================================ */
+.term-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--term-primary);
+  color: var(--term-primary);
+  font-family: var(--term-font);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.term-btn:hover {
+  background: var(--term-primary);
+  color: var(--term-black);
+  box-shadow: var(--term-glow);
+}
+
+.term-btn-sm {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.term-btn-danger {
+  border-color: var(--term-red);
+  color: var(--term-red);
+}
+
+.term-btn-danger:hover {
+  background: var(--term-red);
+  color: var(--term-black);
+  box-shadow: 0 0 10px rgba(255, 51, 51, 0.6);
+}
+
+/* ============================================================
+   Terminal Input
+   ============================================================ */
+.term-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--term-bg);
+  border: 1px solid var(--term-border);
+}
+
+.term-input-prefix {
+  color: var(--term-cyan);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.term-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--term-white);
+  font-family: var(--term-font);
+  font-size: 14px;
+  outline: none;
+  caret-color: var(--term-primary);
+}
+
+.term-input::placeholder {
+  color: var(--term-gray);
+}
+
+/* ============================================================
+   Progress Bar (Terminal Style)
+   ============================================================ */
+.term-progress {
+  height: 4px;
+  background: var(--term-border);
+  overflow: hidden;
+}
+
+.term-progress-bar {
+  height: 100%;
+  background: var(--term-primary);
+  box-shadow: 0 0 10px var(--term-primary-glow);
+  transition: width 0.3s;
+}
+
+/* ASCII进度条 */
+.term-progress-ascii {
+  font-family: var(--term-font);
+  font-size: 12px;
+  color: var(--term-gray);
+}
+
+.term-progress-filled {
+  color: var(--term-primary);
+}
+
+/* ============================================================
+   Matrix Rain Effect (Optional Background)
+   ============================================================ */
+.matrix-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.03;
+  overflow: hidden;
+}
+
+/* ============================================================
+   Log Output Area
+   ============================================================ */
+.term-log {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--term-bg);
+  border: 1px solid var(--term-border);
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.term-log-line {
+  display: flex;
+  gap: 12px;
+}
+
+.term-log-time {
+  color: var(--term-gray);
+  flex-shrink: 0;
+}
+
+.term-log-level {
+  flex-shrink: 0;
+  width: 50px;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.term-log-level.info { color: var(--term-cyan); }
+.term-log-level.warn { color: var(--term-yellow); }
+.term-log-level.error { color: var(--term-red); }
+.term-log-level.success { color: var(--term-primary); }
+
+.term-log-msg {
+  color: var(--term-white);
+  word-break: break-all;
+}
+
+/* ============================================================
+   Typing Animation
+   ============================================================ */
+.term-typing {
+  overflow: hidden;
+  white-space: nowrap;
+  animation: typing 2s steps(40, end);
+}
+
+@keyframes typing {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+/* ============================================================
+   Glitch Effect
+   ============================================================ */
+.term-glitch {
+  position: relative;
+}
+
+.term-glitch::before,
+.term-glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.term-glitch::before {
+  color: var(--term-red);
+  animation: glitch-1 0.3s infinite;
+  clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+  transform: translate(-2px);
+}
+
+.term-glitch::after {
+  color: var(--term-cyan);
+  animation: glitch-2 0.3s infinite;
+  clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+  transform: translate(2px);
+}
+
+@keyframes glitch-1 {
+  0%, 100% { transform: translate(-2px); }
+  25% { transform: translate(2px); }
+  50% { transform: translate(-1px); }
+  75% { transform: translate(1px); }
+}
+
+@keyframes glitch-2 {
+  0%, 100% { transform: translate(2px); }
+  25% { transform: translate(-2px); }
+  50% { transform: translate(1px); }
+  75% { transform: translate(-1px); }
+}
+
+/* ============================================================
+   Layout
+   ============================================================ */
+.term-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.term-grid {
+  display: grid;
+  gap: 24px;
+}
+
+.term-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.term-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 1024px) {
+  .term-grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .term-grid-2,
+  .term-grid-3 { grid-template-columns: 1fr; }
+
+  .term-device-header,
+  .term-device-row {
+    grid-template-columns: 30px 1fr 80px;
+  }
+
+  .term-device-ip,
+  .term-device-battery,
+  .term-device-actions {
+    display: none;
+  }
+}
+
+/* ============================================================
+   Navigation Bar
+   ============================================================ */
+.term-navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: var(--term-bg-light);
+  border-bottom: 1px solid var(--term-border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.term-navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.term-navbar-logo {
+  font-family: var(--term-font-display);
+  font-size: 24px;
+  color: var(--term-primary);
+  text-shadow: var(--term-text-shadow);
+  letter-spacing: 2px;
+}
+
+.term-navbar-version {
+  font-size: 10px;
+  color: var(--term-gray);
+  padding: 2px 6px;
+  border: 1px solid var(--term-gray);
+  border-radius: 3px;
+}
+
+.term-navbar-nav {
+  display: flex;
+  gap: 24px;
+}
+
+.term-nav-link {
+  color: var(--term-gray);
+  text-decoration: none;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: all 0.2s;
+  padding: 8px 0;
+  border-bottom: 2px solid transparent;
+}
+
+.term-nav-link:hover,
+.term-nav-link.active {
+  color: var(--term-primary);
+  border-bottom-color: var(--term-primary);
+  text-shadow: var(--term-text-shadow);
+}
+
+/* ============================================================
+   Device Card (Grid View)
+   ============================================================ */
+.term-device-card {
+  background: var(--term-bg);
+  border: 1px solid var(--term-border);
+  padding: 16px;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.term-device-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--term-primary);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.term-device-card:hover {
+  border-color: var(--term-primary);
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.1);
+}
+
+.term-device-card:hover::before {
+  opacity: 1;
+}
+
+.term-device-card.offline {
+  opacity: 0.6;
+}
+
+.term-device-card.offline::before {
+  background: var(--term-red);
+}
+
+.term-device-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.term-device-card-title {
+  font-size: 14px;
+  color: var(--term-white);
+}
+
+.term-device-card-model {
+  font-size: 12px;
+  color: var(--term-primary);
+  margin-top: 4px;
+}
+
+.term-device-card-body {
+  font-size: 12px;
+  color: var(--term-gray);
+}
+
+.term-device-card-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--term-border);
+}
+
+.term-device-card-row:last-child {
+  border-bottom: none;
+}
+
+.term-device-card-label {
+  color: var(--term-gray);
+}
+
+.term-device-card-value {
+  color: var(--term-white);
+}
+
+/* ============================================================
+   Screen Preview
+   ============================================================ */
+.term-screen-container {
+  background: var(--term-bg);
+  border: 1px solid var(--term-border);
+  position: relative;
+}
+
+.term-screen-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--term-bg-light);
+  border-bottom: 1px solid var(--term-border);
+  font-size: 11px;
+}
+
+.term-screen-title {
+  color: var(--term-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.term-screen-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--term-primary);
+}
+
+.term-screen-canvas {
+  display: block;
+  width: 100%;
+  background: #000;
+}
+
+/* ============================================================
+   Footer
+   ============================================================ */
+.term-footer {
+  padding: 24px;
+  text-align: center;
+  color: var(--term-gray);
+  font-size: 12px;
+  border-top: 1px solid var(--term-border);
+  margin-top: 48px;
+}
+
+.term-footer a {
+  color: var(--term-primary);
+  text-decoration: none;
+}
+
+/* ============================================================
+   Scrollbar
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--term-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--term-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--term-primary-dim);
+}
+
+/* ============================================================
+   Selection
+   ============================================================ */
+::selection {
+  background: var(--term-primary);
+  color: var(--term-black);
+}

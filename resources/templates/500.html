@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>500 - 服务器错误 | CloudControl</title>
+  <link rel="stylesheet" href="/static/css/cybertech-theme.css">
+  <style>
+    .cc-error-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--cc-space-xl);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cc-error-code {
+      font-family: var(--cc-font-display);
+      font-size: 12rem;
+      font-weight: 900;
+      color: transparent;
+      background: linear-gradient(135deg, var(--cc-neon-red) 0%, var(--cc-neon-orange) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      line-height: 1;
+      margin-bottom: var(--cc-space-lg);
+      text-shadow: 0 0 80px rgba(255, 51, 102, 0.5);
+      animation: glitch-skew 0.5s infinite linear alternate-reverse;
+    }
+
+    .cc-error-title {
+      font-family: var(--cc-font-heading);
+      font-size: 2rem;
+      color: var(--cc-text-primary);
+      margin-bottom: var(--cc-space-md);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+    }
+
+    .cc-error-message {
+      font-family: var(--cc-font-mono);
+      font-size: 1rem;
+      color: var(--cc-text-muted);
+      max-width: 600px;
+      margin-bottom: var(--cc-space-xl);
+    }
+
+    .cc-error-details {
+      background: var(--cc-bg-card);
+      border: 1px solid var(--cc-neon-red);
+      border-radius: var(--cc-radius-md);
+      padding: var(--cc-space-lg);
+      margin-bottom: var(--cc-space-xl);
+      max-width: 600px;
+      text-align: left;
+      font-family: var(--cc-font-mono);
+      font-size: 0.85rem;
+      color: var(--cc-neon-red);
+      overflow-x: auto;
+    }
+
+    .cc-error-actions {
+      display: flex;
+      gap: var(--cc-space-md);
+    }
+
+    .cc-scanlines {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.1) 0px,
+        rgba(0, 0, 0, 0.1) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      pointer-events: none;
+      opacity: 0.3;
+    }
+
+    .cc-warning-icon {
+      width: 60px;
+      height: 60px;
+      color: var(--cc-neon-red);
+      margin-bottom: var(--cc-space-lg);
+      animation: pulse-glow 1s infinite;
+    }
+
+    @keyframes glitch-skew {
+      0% { transform: skew(0deg); }
+      20% { transform: skew(-2deg); }
+      40% { transform: skew(1deg); }
+      60% { transform: skew(-1deg); }
+      80% { transform: skew(2deg); }
+      100% { transform: skew(0deg); }
+    }
+
+    @media (max-width: 768px) {
+      .cc-error-code {
+        font-size: 6rem;
+      }
+
+      .cc-error-title {
+        font-size: 1.5rem;
+      }
+
+      .cc-error-actions {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="cc-error-page">
+    <div class="cc-scanlines"></div>
+
+    <svg class="cc-warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+
+    <div class="cc-error-code" data-text="500">500</div>
+
+    <h1 class="cc-error-title">服务器错误</h1>
+
+    <p class="cc-error-message">
+      // CRITICAL: INTERNAL_SERVER_ERROR<br>
+      // 服务器遇到了意外情况，无法完成请求
+    </p>
+
+    {% if text or body %}
+    <div class="cc-error-details">
+      <strong>Error Details:</strong><br>
+      {% if text %}{{ text }}<br>{% endif %}
+      {% if body %}{{ body }}{% endif %}
+    </div>
+    {% endif %}
+
+    <div class="cc-error-actions">
+      <a href="/" class="cc-btn cc-btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        返回首页
+      </a>
+      <button onclick="location.reload()" class="cc-btn cc-btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6M1 20v-6h6"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        重试
+      </button>
+    </div>
+  </div>
+</body>
+</html>

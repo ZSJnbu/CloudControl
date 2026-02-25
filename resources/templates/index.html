@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CloudControl // Terminal</title>
+  <link rel="stylesheet" href="/static/css/terminal-theme.css">
+  <style>
+    .term-main {
+      padding: 24px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    .term-section {
+      margin-bottom: 32px;
+    }
+
+    .term-section-title {
+      font-size: 12px;
+      color: var(--term-gray);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--term-border);
+    }
+
+    .term-section-title::before {
+      content: '# ';
+      color: var(--term-primary);
+    }
+
+    /* 设备网格 */
+    .term-devices-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    /* 快速命令区 */
+    .term-quick-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    /* 统计卡片 */
+    .term-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .term-stat-card {
+      background: var(--term-bg);
+      border: 1px solid var(--term-border);
+      padding: 20px;
+      text-align: center;
+    }
+
+    .term-stat-value {
+      font-family: var(--term-font-display);
+      font-size: 48px;
+      color: var(--term-primary);
+      text-shadow: var(--term-text-shadow);
+      line-height: 1;
+    }
+
+    .term-stat-value.warning { color: var(--term-yellow); }
+    .term-stat-value.danger { color: var(--term-red); }
+
+    .term-stat-label {
+      font-size: 11px;
+      color: var(--term-gray);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 768px) {
+      .term-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* Boot sequence animation */
+    .boot-line {
+      opacity: 0;
+      animation: boot-fade 0.5s ease forwards;
+    }
+
+    .boot-line:nth-child(1) { animation-delay: 0.1s; }
+    .boot-line:nth-child(2) { animation-delay: 0.3s; }
+    .boot-line:nth-child(3) { animation-delay: 0.5s; }
+    .boot-line:nth-child(4) { animation-delay: 0.7s; }
+    .boot-line:nth-child(5) { animation-delay: 0.9s; }
+    .boot-line:nth-child(6) { animation-delay: 1.1s; }
+
+    @keyframes boot-fade {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Device preview image */
+    .term-device-preview {
+      width: 100%;
+      height: 180px;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      border: 1px solid var(--term-border);
+      overflow: hidden;
+    }
+
+    .term-device-preview img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .term-device-preview-placeholder {
+      color: var(--term-gray);
+      font-size: 12px;
+    }
+
+    /* Connection status */
+    .term-connection {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: var(--term-bg);
+      border: 1px solid var(--term-border);
+      font-size: 12px;
+      z-index: 1000;
+    }
+
+    .term-connection-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--term-primary);
+      animation: pulse-glow 2s infinite;
+    }
+
+    .term-connection-dot.error {
+      background: var(--term-red);
+      animation: none;
+    }
+
+    /* Modal Styles */
+    .term-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .term-modal {
+      background: var(--term-bg);
+      border: 1px solid var(--term-primary);
+      box-shadow: 0 0 30px rgba(0, 255, 65, 0.3);
+      width: 90%;
+      max-width: 500px;
+    }
+
+    .term-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--term-border);
+    }
+
+    .term-modal-title {
+      color: var(--term-primary);
+      font-size: 14px;
+    }
+
+    .term-modal-close {
+      background: none;
+      border: none;
+      color: var(--term-gray);
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .term-modal-close:hover {
+      color: var(--term-red);
+    }
+
+    .term-modal-body {
+      padding: 20px;
+    }
+
+    .term-modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 16px 20px;
+      border-top: 1px solid var(--term-border);
+    }
+
+    .term-form-group {
+      margin-bottom: 16px;
+    }
+
+    .term-label {
+      display: block;
+      font-size: 12px;
+      color: var(--term-primary);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .term-help-text {
+      font-size: 11px;
+      color: var(--term-gray);
+      margin-top: 4px;
+    }
+
+    .term-help-block {
+      background: rgba(0, 255, 65, 0.05);
+      border: 1px dashed var(--term-border);
+      padding: 12px;
+      font-size: 12px;
+      color: var(--term-gray);
+      line-height: 1.8;
+    }
+
+    .term-help-block code {
+      background: var(--term-bg);
+      border: 1px solid var(--term-border);
+      padding: 2px 6px;
+      color: var(--term-cyan);
+    }
+
+    .term-status-msg {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
+    .term-status-msg.success {
+      background: rgba(0, 255, 65, 0.1);
+      border: 1px solid var(--term-primary);
+      color: var(--term-primary);
+    }
+
+    .term-status-msg.error {
+      background: rgba(255, 85, 85, 0.1);
+      border: 1px solid var(--term-red);
+      color: var(--term-red);
+    }
+
+    .term-status-msg.info {
+      background: rgba(0, 170, 255, 0.1);
+      border: 1px solid var(--term-cyan);
+      color: var(--term-cyan);
+    }
+
+    .term-btn-primary {
+      background: var(--term-primary);
+      color: var(--term-bg);
+      border-color: var(--term-primary);
+    }
+
+    .term-btn-primary:hover {
+      background: transparent;
+      color: var(--term-primary);
+    }
+
+    .term-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="term-navbar">
+    <div class="term-navbar-brand">
+      <span class="term-navbar-logo">CLOUDCONTROL</span>
+      <span class="term-navbar-version">v2.0</span>
+    </div>
+    <div class="term-navbar-nav">
+      <a href="/" class="term-nav-link active">DEVICES</a>
+      <a href="/files" class="term-nav-link">FILES</a>
+    </div>
+    <div style="display: flex; gap: 12px;">
+      <button class="term-btn term-btn-sm" onclick="location.reload()">
+        REFRESH
+      </button>
+    </div>
+  </nav>
+
+  
+  <div id="app" class="term-main">
+    <!-- ASCII Art Header -->
+    <div class="term-window" style="margin-bottom: 24px;">
+      <div class="term-content">
+        <pre class="term-ascii-header">
+   ██████╗██╗      ██████╗ ██╗   ██╗██████╗  ██████╗ ██████╗ ███╗   ██╗████████╗██████╗  ██████╗ ██╗
+  ██╔════╝██║     ██╔═══██╗██║   ██║██╔══██╗██╔════╝██╔═══██╗████╗  ██║╚══██╔══╝██╔══██╗██╔═══██╗██║
+  ██║     ██║     ██║   ██║██║   ██║██║  ██║██║     ██║   ██║██╔██╗ ██║   ██║   ██████╔╝██║   ██║██║
+  ██║     ██║     ██║   ██║██║   ██║██║  ██║██║     ██║   ██║██║╚██╗██║   ██║   ██╔══██╗██║   ██║██║
+  ╚██████╗███████╗╚██████╔╝╚██████╔╝██████╔╝╚██████╗╚██████╔╝██║ ╚████║   ██║   ██║  ██║╚██████╔╝███████╗
+   ╚═════╝╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝  ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚══════╝
+        </pre>
+        <div style="text-align: center; margin-top: -10px;">
+          <span class="term-comment">// Android Device Control System</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Boot Sequence -->
+    <div class="term-window" style="margin-bottom: 24px;">
+      <div class="term-titlebar">
+        <div class="term-titlebar-buttons">
+          <span class="term-btn-close"></span>
+          <span class="term-btn-min"></span>
+          <span class="term-btn-max"></span>
+        </div>
+        <div class="term-titlebar-title">system@cloudcontrol:~</div>
+      </div>
+      <div class="term-content" style="font-size: 13px;">
+        <div class="boot-line"><span class="term-prompt">system</span> <span class="term-command">./init.sh</span></div>
+        <div class="boot-line"><span class="term-success">[OK]</span> Loading kernel modules...</div>
+        <div class="boot-line"><span class="term-success">[OK]</span> Initializing ADB bridge...</div>
+        <div class="boot-line"><span class="term-success">[OK]</span> Database connection established (SQLite)</div>
+        <div class="boot-line"><span class="term-success">[OK]</span> Device detector started (interval: 5s)</div>
+        <div class="boot-line"><span class="term-success">[OK]</span> Server running on <span class="term-highlight">http://0.0.0.0:8000</span></div>
+      </div>
+    </div>
+
+    <!-- System Status -->
+    <div class="term-section">
+      <div class="term-section-title">System Status</div>
+      <div class="term-stats-grid">
+        <div class="term-stat-card">
+          <div class="term-stat-value">${ onlineDevices.length }</div>
+          <div class="term-stat-label">Online Devices</div>
+        </div>
+        <div class="term-stat-card">
+          <div class="term-stat-value" :class="{'danger': offlineCount > 0}">${ offlineCount }</div>
+          <div class="term-stat-label">Offline</div>
+        </div>
+        <div class="term-stat-card">
+          <div class="term-stat-value">${ selectedDevices.length }</div>
+          <div class="term-stat-label">Selected</div>
+        </div>
+        <div class="term-stat-card">
+          <div class="term-stat-value">${ uptimeStr }</div>
+          <div class="term-stat-label">Uptime</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="term-section">
+      <div class="term-section-title">Quick Commands</div>
+      <div class="term-input-group">
+        <span class="term-input-prefix">root@cloudcontrol:~$</span>
+        <input type="text" class="term-input" v-model="searchQuery" placeholder="search devices or enter command...">
+        <span class="term-cursor"></span>
+      </div>
+      <div class="term-quick-actions">
+        <button class="term-btn" @click="selectAll">SELECT ALL</button>
+        <button class="term-btn" @click="deselectAll">DESELECT</button>
+        <button class="term-btn" @click="refreshAll">REFRESH</button>
+        <button class="term-btn term-btn-primary" @click="showWifiModal = true">+ WIFI CONNECT</button>
+        <button class="term-btn" v-if="selectedDevices.length > 0" @click="openGroupControl">
+          GROUP CONTROL [${ selectedDevices.length }]
+        </button>
+      </div>
+
+      <!-- WiFi Connect Modal -->
+      <div v-if="showWifiModal" class="term-modal-overlay" @click.self="showWifiModal = false">
+        <div class="term-modal">
+          <div class="term-modal-header">
+            <span class="term-modal-title">// WiFi 设备连接</span>
+            <button class="term-modal-close" @click="showWifiModal = false">&times;</button>
+          </div>
+          <div class="term-modal-body">
+            <div class="term-form-group">
+              <label class="term-label">设备 IP:端口</label>
+              <input type="text" class="term-input" v-model="wifiAddress"
+                     placeholder="192.168.1.100:5555"
+                     @keyup.enter="connectWifiDevice">
+              <div class="term-help-text">
+                格式：IP:端口（例如 192.168.31.186:5555）
+              </div>
+            </div>
+            <div class="term-form-group" v-if="wifiStatus">
+              <div class="term-status-msg" :class="wifiStatusType">
+                ${ wifiStatus }
+              </div>
+            </div>
+            <div class="term-help-block">
+              <div class="term-comment">// 如何开启 WiFi 调试：</div>
+              <div>1. 先用 USB 线连接手机</div>
+              <div>2. 执行命令：<code>adb tcpip 5555</code></div>
+              <div>3. 在手机设置 > WiFi 中查看 IP 地址</div>
+              <div>4. 拔掉 USB，通过 WiFi 连接</div>
+              <div style="margin-top: 8px;">
+                <span class="term-comment">// Android 11+ 无线调试：</span>
+              </div>
+              <div>设置 > 开发者选项 > 无线调试</div>
+            </div>
+          </div>
+          <div class="term-modal-footer">
+            <button class="term-btn" @click="showWifiModal = false">取消</button>
+            <button class="term-btn term-btn-primary" @click="connectWifiDevice" :disabled="wifiConnecting">
+              ${ wifiConnecting ? '连接中...' : '连接' }
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Device List -->
+    <div class="term-section">
+      <div class="term-section-title">Connected Devices (${ filteredDevices.length })</div>
+
+      <!-- Empty State -->
+      <div v-if="filteredDevices.length === 0" class="term-window">
+        <div class="term-content" style="text-align: center; padding: 48px;">
+          <div style="font-size: 14px; color: var(--term-gray); margin-bottom: 16px;">
+            <span class="term-error">[ERROR]</span> No devices found
+          </div>
+          <div style="font-size: 12px; color: var(--term-gray);">
+            <div>// Connect your Android device via USB</div>
+            <div>// Enable USB debugging in Developer Options</div>
+            <div>// Allow this computer when prompted</div>
+          </div>
+          <div style="margin-top: 24px;">
+            <button class="term-btn" onclick="location.reload()">SCAN DEVICES</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Device Grid -->
+      <div class="term-devices-grid" v-else>
+        <div v-for="(device, index) in filteredDevices"
+             :key="device.udid"
+             class="term-device-card"
+             :class="{offline: !device.present, selected: isSelected(device)}"
+             @click="toggleSelect(device)">
+
+          <!-- Device Preview -->
+          <div class="term-device-preview">
+            <img v-if="device.present" :src="getScreenshotUrl(device)" :alt="device.model" @error="onImgError">
+            <span v-else class="term-device-preview-placeholder">[OFFLINE]</span>
+          </div>
+
+          <!-- Device Info -->
+          <div class="term-device-card-header">
+            <div>
+              <div class="term-device-card-title">${ device.brand }</div>
+              <div class="term-device-card-model">${ device.model }</div>
+            </div>
+            <div class="term-device-status" :class="{online: device.present, offline: !device.present}">
+              <span class="term-indicator" :class="{offline: !device.present}"></span>
+              <span>${ device.present ? 'ONLINE' : 'OFFLINE' }</span>
+            </div>
+          </div>
+
+          <div class="term-device-card-body">
+            <div class="term-device-card-row">
+              <span class="term-device-card-label">IP</span>
+              <span class="term-device-card-value" style="color: var(--term-cyan);">${ device.ip }</span>
+            </div>
+            <div class="term-device-card-row">
+              <span class="term-device-card-label">Android</span>
+              <span class="term-device-card-value">${ device.version }</span>
+            </div>
+            <div class="term-device-card-row">
+              <span class="term-device-card-label">Serial</span>
+              <span class="term-device-card-value" style="font-size: 11px;">${ device.serial || device.udid.split('-')[0] }</span>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div style="margin-top: 12px; display: flex; gap: 8px;">
+            <a :href="'/devices/' + device.udid + '/remote'" class="term-btn term-btn-sm" style="flex: 1; justify-content: center;" @click.stop>
+              CONTROL
+            </a>
+            <button class="term-btn term-btn-sm term-btn-danger" @click.stop="rebootDevice(device)" title="Reboot">
+              PWR
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity Log -->
+    <div class="term-section">
+      <div class="term-section-title">Activity Log</div>
+      <div class="term-log">
+        <div v-for="log in logs" :key="log.id" class="term-log-line">
+          <span class="term-log-time">${ log.time }</span>
+          <span class="term-log-level" :class="log.level">${ log.level }</span>
+          <span class="term-log-msg">${ log.msg }</span>
+        </div>
+        <div v-if="logs.length === 0" style="color: var(--term-gray);">
+          // Waiting for events...
+        </div>
+      </div>
+    </div>
+
+    <!-- Connection Status -->
+    <div class="term-connection">
+      <span class="term-connection-dot" :class="{error: !wsConnected}"></span>
+      <span v-if="wsConnected">CONNECTED</span>
+      <span v-else style="color: var(--term-red);">DISCONNECTED</span>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="term-footer">
+    <span class="term-comment">// CloudControl v2.0 - Android Device Control System</span>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+
+  <script>
+    new Vue({
+      el: '#app',
+      delimiters: ['${', '}'],
+      data: {
+        devices: [],
+        selectedDevices: [],
+        searchQuery: '',
+        wsConnected: false,
+        startTime: Date.now(),
+        uptimeStr: '00:00',
+        logs: [],
+        logIdCounter: 0,
+        // WiFi connection
+        showWifiModal: false,
+        wifiAddress: '',
+        wifiConnecting: false,
+        wifiStatus: '',
+        wifiStatusType: 'info'
+      },
+      computed: {
+        onlineDevices: function() {
+          return this.devices.filter(d => d.present);
+        },
+        offlineCount: function() {
+          return this.devices.filter(d => !d.present).length;
+        },
+        filteredDevices: function() {
+          var query = this.searchQuery.toLowerCase();
+          if (!query) return this.devices;
+          return this.devices.filter(function(d) {
+            return (d.model && d.model.toLowerCase().includes(query)) ||
+                   (d.brand && d.brand.toLowerCase().includes(query)) ||
+                   (d.ip && d.ip.includes(query)) ||
+                   (d.udid && d.udid.toLowerCase().includes(query));
+          });
+        }
+      },
+      mounted: function() {
+        this.loadDevices();
+        this.startUptimeTimer();
+        this.addLog('info', 'Terminal interface initialized');
+        this.startAutoRefresh();
+      },
+      methods: {
+        loadDevices: function() {
+          var self = this;
+          $.ajax({
+            url: '/list',
+            dataType: 'json',
+            success: function(data) {
+              self.devices = data || [];
+              self.wsConnected = true;
+              self.addLog('success', 'Loaded ' + self.devices.length + ' device(s)');
+            },
+            error: function() {
+              self.wsConnected = false;
+              self.addLog('error', 'Failed to load devices');
+            }
+          });
+        },
+        startAutoRefresh: function() {
+          var self = this;
+          setInterval(function() {
+            self.loadDevices();
+          }, 5000);
+        },
+        startUptimeTimer: function() {
+          var self = this;
+          setInterval(function() {
+            var elapsed = Math.floor((Date.now() - self.startTime) / 1000);
+            var min = Math.floor(elapsed / 60);
+            var sec = elapsed % 60;
+            self.uptimeStr = (min < 10 ? '0' : '') + min + ':' + (sec < 10 ? '0' : '') + sec;
+          }, 1000);
+        },
+        getScreenshotUrl: function(device) {
+          return 'http://' + device.ip + ':7912/screenshot?t=' + Date.now();
+        },
+        onImgError: function(e) {
+          e.target.style.display = 'none';
+        },
+        isSelected: function(device) {
+          return this.selectedDevices.indexOf(device.udid) > -1;
+        },
+        toggleSelect: function(device) {
+          var idx = this.selectedDevices.indexOf(device.udid);
+          if (idx > -1) {
+            this.selectedDevices.splice(idx, 1);
+          } else {
+            this.selectedDevices.push(device.udid);
+          }
+        },
+        selectAll: function() {
+          this.selectedDevices = this.devices.map(d => d.udid);
+          this.addLog('info', 'Selected all devices');
+        },
+        deselectAll: function() {
+          this.selectedDevices = [];
+        },
+        refreshAll: function() {
+          this.loadDevices();
+        },
+        openGroupControl: function() {
+          // 构建群控表单并提交到 /async
+          if (this.selectedDevices.length === 0) {
+            this.addLog('error', 'No devices selected');
+            return;
+          }
+
+          // 创建表单并POST提交
+          var form = document.createElement('form');
+          form.method = 'POST';
+          form.action = '/async';
+
+          var input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'devices';
+          input.value = this.selectedDevices.join(',');
+
+          form.appendChild(input);
+          document.body.appendChild(form);
+          form.submit();
+        },
+        rebootDevice: function(device) {
+          if (confirm('Reboot ' + device.model + '?')) {
+            this.addLog('warn', 'Rebooting device: ' + device.model);
+          }
+        },
+        addLog: function(level, msg) {
+          var now = new Date();
+          var time = now.toTimeString().split(' ')[0];
+          this.logs.unshift({
+            id: ++this.logIdCounter,
+            time: time,
+            level: level,
+            msg: msg
+          });
+          if (this.logs.length > 50) {
+            this.logs.pop();
+          }
+        },
+        connectWifiDevice: function() {
+          var self = this;
+          var addr = this.wifiAddress.trim();
+
+          if (!addr) {
+            this.wifiStatus = '请输入 IP:端口';
+            this.wifiStatusType = 'error';
+            return;
+          }
+
+          // Validate format
+          if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+$/.test(addr)) {
+            this.wifiStatus = '格式错误，请使用 IP:端口（例如 192.168.1.100:5555）';
+            this.wifiStatusType = 'error';
+            return;
+          }
+
+          this.wifiConnecting = true;
+          this.wifiStatus = '正在连接 ' + addr + '...';
+          this.wifiStatusType = 'info';
+          this.addLog('info', 'WiFi 连接: ' + addr);
+
+          $.ajax({
+            url: '/api/wifi-connect',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ address: addr }),
+            success: function(data) {
+              self.wifiConnecting = false;
+              if (data.status === 'ok') {
+                self.wifiStatus = '连接成功！设备: ' + (data.model || addr);
+                self.wifiStatusType = 'success';
+                self.addLog('success', 'WiFi 设备已连接: ' + (data.model || addr));
+                // Refresh device list
+                setTimeout(function() {
+                  self.loadDevices();
+                  self.showWifiModal = false;
+                  self.wifiAddress = '';
+                  self.wifiStatus = '';
+                }, 1500);
+              } else {
+                self.wifiStatus = '连接失败: ' + (data.message || '未知错误');
+                self.wifiStatusType = 'error';
+                self.addLog('error', 'WiFi 连接失败: ' + (data.message || '未知错误'));
+              }
+            },
+            error: function(xhr) {
+              self.wifiConnecting = false;
+              var msg = xhr.responseJSON ? xhr.responseJSON.message : '连接失败';
+              self.wifiStatus = '错误: ' + msg;
+              self.wifiStatusType = 'error';
+              self.addLog('error', 'WiFi 连接错误: ' + msg);
+            }
+          });
+        }
+      }
+    });
+  </script>
+</body>
+</html>

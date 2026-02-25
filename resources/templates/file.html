@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CloudControl - 文件管理</title>
+    <link rel="stylesheet" href="/static/css/terminal-theme.css">
+    <link rel="stylesheet" href="/static/dropzone/dropzone.min.css">
+    <style>
+        .term-file-page {
+            min-height: 100vh;
+            padding: 16px;
+            padding-top: 66px;
+        }
+
+        /* Navbar */
+        .term-file-navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: var(--term-bg-dark);
+            border-bottom: 1px solid var(--term-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            z-index: 1000;
+        }
+
+        .term-file-navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .term-file-navbar-logo {
+            color: var(--term-green);
+            font-family: var(--term-font);
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        .term-file-navbar-subtitle {
+            font-family: var(--term-font);
+            font-size: 0.85rem;
+            color: var(--term-cyan);
+        }
+
+        /* Upload Zone */
+        .term-upload-zone {
+            background: var(--term-bg-dark);
+            border: 2px dashed var(--term-border);
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 16px;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .term-upload-zone:hover,
+        .term-upload-zone.dz-drag-hover {
+            border-color: var(--term-green);
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.1);
+        }
+
+        .term-upload-icon {
+            width: 64px;
+            height: 64px;
+            color: var(--term-green);
+            margin-bottom: 16px;
+            animation: pulse-glow 2s infinite;
+        }
+
+        .term-upload-text {
+            font-family: var(--term-font);
+            color: var(--term-text);
+            margin-bottom: 8px;
+        }
+
+        .term-upload-hint {
+            font-family: var(--term-font);
+            font-size: 0.85rem;
+            color: var(--term-text-dim);
+        }
+
+        /* Dropzone Overrides */
+        .dropzone {
+            background: transparent !important;
+            border: none !important;
+            min-height: auto !important;
+            padding: 0 !important;
+        }
+
+        .dropzone .dz-message {
+            margin: 0 !important;
+        }
+
+        .dropzone .dz-preview {
+            background: var(--term-bg) !important;
+            border: 1px solid var(--term-border) !important;
+            margin: 8px !important;
+        }
+
+        .dropzone .dz-preview .dz-details {
+            background: var(--term-bg-dark) !important;
+            color: var(--term-text) !important;
+            padding: 8px !important;
+        }
+
+        .dropzone .dz-preview .dz-filename span,
+        .dropzone .dz-preview .dz-size span {
+            background: transparent !important;
+            color: var(--term-text) !important;
+        }
+
+        .dropzone .dz-preview .dz-progress {
+            background: var(--term-bg) !important;
+        }
+
+        .dropzone .dz-preview .dz-progress .dz-upload {
+            background: var(--term-green) !important;
+        }
+
+        .dropzone .dz-preview .dz-success-mark svg path {
+            fill: var(--term-green) !important;
+        }
+
+        .dropzone .dz-preview .dz-error-mark svg path {
+            fill: var(--term-red) !important;
+        }
+
+        .dropzone .dz-preview .dz-remove {
+            color: var(--term-red) !important;
+            font-family: var(--term-font) !important;
+            font-size: 0.8rem !important;
+        }
+
+        /* Upload Config */
+        .term-upload-config {
+            display: flex;
+            gap: 16px;
+            align-items: flex-end;
+            margin-bottom: 16px;
+        }
+
+        .term-upload-config .term-form-group {
+            flex: 1;
+        }
+
+        .term-form-group {
+            margin-bottom: 0;
+        }
+
+        .term-form-label {
+            display: block;
+            font-family: var(--term-font);
+            font-size: 0.8rem;
+            color: var(--term-text-dim);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .term-form-input {
+            width: 100%;
+            background: var(--term-bg);
+            border: 1px solid var(--term-border);
+            color: var(--term-green);
+            padding: 10px 12px;
+            font-family: var(--term-font);
+            font-size: 0.9rem;
+        }
+
+        .term-form-input:focus {
+            outline: none;
+            border-color: var(--term-green);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+        }
+
+        .term-form-input::placeholder {
+            color: var(--term-text-dim);
+        }
+
+        .term-form-hint {
+            display: block;
+            font-family: var(--term-font);
+            font-size: 0.75rem;
+            color: var(--term-text-dim);
+            margin-top: 6px;
+        }
+
+        /* File Section */
+        .term-file-section {
+            background: var(--term-bg-dark);
+            border: 1px solid var(--term-border);
+            overflow: hidden;
+        }
+
+        .term-file-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--term-bg);
+            border-bottom: 1px solid var(--term-border);
+        }
+
+        .term-file-title {
+            font-family: var(--term-font);
+            font-size: 1rem;
+            color: var(--term-green);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .term-file-title svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* File Table */
+        .term-file-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .term-file-table th {
+            background: var(--term-bg);
+            padding: 12px;
+            text-align: left;
+            font-family: var(--term-font);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--term-text-dim);
+            border-bottom: 1px solid var(--term-border);
+        }
+
+        .term-file-table th.sortable {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .term-file-table th.sortable:hover {
+            color: var(--term-green);
+        }
+
+        .term-file-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--term-border);
+            font-family: var(--term-font);
+            font-size: 0.85rem;
+            color: var(--term-text);
+        }
+
+        .term-file-table tr:hover td {
+            background: rgba(0, 255, 65, 0.03);
+        }
+
+        .term-file-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .term-file-name {
+            color: var(--term-text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .term-file-name svg {
+            width: 14px;
+            height: 14px;
+            color: var(--term-purple);
+        }
+
+        .term-file-size {
+            color: var(--term-green);
+        }
+
+        .term-file-group {
+            display: inline-block;
+            padding: 2px 8px;
+            background: rgba(136, 0, 255, 0.1);
+            border: 1px solid var(--term-purple);
+            font-size: 0.7rem;
+            color: var(--term-purple);
+        }
+
+        .term-file-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .term-file-action-btn {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: 1px solid var(--term-border);
+            color: var(--term-text-dim);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .term-file-action-btn:hover {
+            border-color: var(--term-green);
+            color: var(--term-green);
+        }
+
+        .term-file-action-btn.danger:hover {
+            border-color: var(--term-red);
+            color: var(--term-red);
+        }
+
+        .term-file-action-btn svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        /* Loading State */
+        .term-loading {
+            position: relative;
+            opacity: 0.6;
+        }
+
+        .term-loading::after {
+            content: 'LOADING...';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: var(--term-font);
+            color: var(--term-green);
+            animation: blink 1s infinite;
+        }
+
+        /* Empty State */
+        .term-empty-state {
+            padding: 60px;
+            text-align: center;
+        }
+
+        .term-empty-icon {
+            width: 80px;
+            height: 80px;
+            color: var(--term-text-dim);
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .term-empty-text {
+            font-family: var(--term-font);
+            color: var(--term-text-dim);
+        }
+
+        /* Pagination */
+        .term-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--term-bg);
+            border-top: 1px solid var(--term-border);
+        }
+
+        .term-pagination-info {
+            font-family: var(--term-font);
+            font-size: 0.8rem;
+            color: var(--term-text-dim);
+        }
+
+        .term-pagination-controls {
+            display: flex;
+            gap: 4px;
+        }
+
+        .term-page-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: 1px solid var(--term-border);
+            color: var(--term-text);
+            cursor: pointer;
+            font-family: var(--term-font);
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .term-page-btn:hover:not(:disabled) {
+            border-color: var(--term-green);
+            color: var(--term-green);
+        }
+
+        .term-page-btn.active {
+            background: var(--term-green);
+            border-color: var(--term-green);
+            color: var(--term-black);
+        }
+
+        .term-page-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="term-body">
+    <!-- Navigation -->
+    <nav class="term-file-navbar">
+        <div class="term-file-navbar-brand">
+            <span class="term-file-navbar-logo">[CLOUDCONTROL]</span>
+            <span class="term-file-navbar-subtitle">// FILE_MANAGER</span>
+        </div>
+
+        <div>
+            <a href="/" class="term-btn term-btn-ghost">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                </svg>
+                HOME
+            </a>
+        </div>
+    </nav>
+
+    {% raw %}
+    <div id="app" class="term-file-page">
+        <!-- Upload Zone -->
+        <div class="term-window">
+            <div class="term-titlebar">
+                <div class="term-titlebar-btn close"></div>
+                <div class="term-titlebar-btn minimize"></div>
+                <div class="term-titlebar-btn maximize"></div>
+                <div class="term-titlebar-title">upload@cloudcontrol:~</div>
+            </div>
+            <div class="term-window-content">
+                <div class="term-upload-zone">
+                    <form action="/upload/sdcard/tmp/" method="post" enctype="multipart/form-data" class="dropzone" ref="upload" id="fileDropzone">
+                        <div class="dz-message">
+                            <svg class="term-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            <p class="term-upload-text">// DROP_FILES_HERE_OR_CLICK</p>
+                            <p class="term-upload-hint">max_files: 2 | max_size: 1000MB</p>
+                        </div>
+                        <div class="fallback">
+                            <input name="file" type="file" multiple />
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Upload Config -->
+                <div class="term-upload-config">
+                    <div class="term-form-group">
+                        <label class="term-form-label">UPLOAD_PATH:</label>
+                        <input type="text" class="term-form-input" v-model="uploadPath" placeholder="/data/local/tmp/">
+                        <span class="term-form-hint">// default: /data/local/tmp/*</span>
+                    </div>
+                    <button class="term-btn term-btn-primary" id="upload_file">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        EXECUTE
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- File List -->
+        <div class="term-file-section" :class="{'term-loading': loading}">
+            <div class="term-file-header">
+                <h3 class="term-file-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    FILE_LIST
+                </h3>
+                <button class="term-btn term-btn-ghost" @click="refreshFiles">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 4v6h-6M1 20v-6h6"/>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    </svg>
+                    REFRESH
+                </button>
+            </div>
+
+            <table class="term-file-table" v-if="files.length > 0">
+                <thead>
+                    <tr>
+                        <th class="sortable" @click="sortBy('group')">
+                            GROUP
+                            <svg v-if="sortKey === 'group'" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline :points="sortOrder === 'asc' ? '18 15 12 9 6 15' : '6 9 12 15 18 9'"/>
+                            </svg>
+                        </th>
+                        <th class="sortable" @click="sortBy('filename')">FILENAME</th>
+                        <th class="sortable" @click="sortBy('filesize')">SIZE</th>
+                        <th class="sortable" @click="sortBy('upload_time')">TIMESTAMP</th>
+                        <th>USER</th>
+                        <th>ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="file in paginatedFiles" :key="file.id">
+                        <td><span class="term-file-group">{{ file.group }}</span></td>
+                        <td>
+                            <span class="term-file-name">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                </svg>
+                                {{ file.filename }}
+                            </span>
+                        </td>
+                        <td class="term-file-size">{{ formatSize(file.filesize) }}</td>
+                        <td>{{ file.upload_time }}</td>
+                        <td>{{ file.who }}</td>
+                        <td>
+                            <div class="term-file-actions">
+                                <button class="term-file-action-btn" @click="viewFile(file)" title="VIEW">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                </button>
+                                <button class="term-file-action-btn" @click="editFile(file)" title="EDIT">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                    </svg>
+                                </button>
+                                <button class="term-file-action-btn danger" @click="deleteFile(file)" title="DELETE">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"/>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Empty State -->
+            <div class="term-empty-state" v-else>
+                <svg class="term-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    <line x1="9" y1="14" x2="15" y2="14"/>
+                </svg>
+                <p class="term-empty-text">// NO_FILES_FOUND</p>
+            </div>
+
+            <!-- Pagination -->
+            <div class="term-pagination" v-if="totalPages > 1">
+                <div class="term-pagination-info">
+                    SHOWING {{ startIndex + 1 }}-{{ endIndex }} OF {{ files.length }} FILES
+                </div>
+                <div class="term-pagination-controls">
+                    <button class="term-page-btn" @click="currentPage--" :disabled="currentPage === 1">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"/>
+                        </svg>
+                    </button>
+                    <button v-for="page in displayedPages"
+                            :key="page"
+                            class="term-page-btn"
+                            :class="{active: page === currentPage}"
+                            @click="currentPage = page">
+                        {{ page }}
+                    </button>
+                    <button class="term-page-btn" @click="currentPage++" :disabled="currentPage === totalPages">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endraw %}
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="/static/dropzone/dropzone.min.js"></script>
+
+    <script>
+        var app = new Vue({
+            el: '#app',
+            data: {
+                files: [],
+                loading: false,
+                uploadPath: '/data/local/tmp/',
+                currentPage: 1,
+                perPage: 10,
+                sortKey: 'upload_time',
+                sortOrder: 'desc'
+            },
+            computed: {
+                sortedFiles: function() {
+                    var self = this;
+                    return this.files.slice().sort(function(a, b) {
+                        var modifier = self.sortOrder === 'asc' ? 1 : -1;
+                        if (a[self.sortKey] < b[self.sortKey]) return -1 * modifier;
+                        if (a[self.sortKey] > b[self.sortKey]) return 1 * modifier;
+                        return 0;
+                    });
+                },
+                totalPages: function() {
+                    return Math.ceil(this.files.length / this.perPage);
+                },
+                startIndex: function() {
+                    return (this.currentPage - 1) * this.perPage;
+                },
+                endIndex: function() {
+                    return Math.min(this.startIndex + this.perPage, this.files.length);
+                },
+                paginatedFiles: function() {
+                    return this.sortedFiles.slice(this.startIndex, this.endIndex);
+                },
+                displayedPages: function() {
+                    var pages = [];
+                    var start = Math.max(1, this.currentPage - 2);
+                    var end = Math.min(this.totalPages, start + 4);
+                    for (var i = start; i <= end; i++) {
+                        pages.push(i);
+                    }
+                    return pages;
+                }
+            },
+            mounted: function() {
+                this.refreshFiles();
+            },
+            methods: {
+                refreshFiles: function() {
+                    var self = this;
+                    this.loading = true;
+                    $.ajax({
+                        url: '/files',
+                        dataType: 'json',
+                        success: function(data) {
+                            self.files = data.data || data || [];
+                            self.loading = false;
+                        },
+                        error: function() {
+                            self.loading = false;
+                            console.error('[FILE_MANAGER] Load failed');
+                        }
+                    });
+                },
+                sortBy: function(key) {
+                    if (this.sortKey === key) {
+                        this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        this.sortKey = key;
+                        this.sortOrder = 'asc';
+                    }
+                },
+                formatSize: function(bytes) {
+                    if (!bytes) return '--';
+                    var units = ['B', 'KB', 'MB', 'GB'];
+                    var i = 0;
+                    while (bytes >= 1024 && i < units.length - 1) {
+                        bytes /= 1024;
+                        i++;
+                    }
+                    return bytes.toFixed(1) + ' ' + units[i];
+                },
+                viewFile: function(file) {
+                    console.log('[FILE_MANAGER] View:', file);
+                },
+                editFile: function(file) {
+                    console.log('[FILE_MANAGER] Edit:', file);
+                },
+                deleteFile: function(file) {
+                    if (confirm('DELETE ' + file.filename + '?')) {
+                        window.location.href = '/file/delete/' + file.group + '/' + file.filename;
+                    }
+                }
+            }
+        });
+
+        // Dropzone Configuration
+        Dropzone.autoDiscover = false;
+        var myDropzone = new Dropzone("#fileDropzone", {
+            url: '/upload_group/data_local_tmp',
+            paramName: 'file',
+            maxFilesize: 1000,
+            maxFiles: 2,
+            addRemoveLinks: true,
+            autoProcessQueue: false,
+            dictDefaultMessage: '',
+            dictCancelUpload: 'CANCEL',
+            dictRemoveFile: 'REMOVE',
+            dictFileTooBig: 'FILE_TOO_LARGE ({{filesize}}MB) | MAX: 1000MB',
+            dictMaxFilesExceeded: 'MAX_FILES: 2',
+            dictResponseError: 'UPLOAD_FAILED',
+            init: function() {
+                this.on('addedfile', function(file) {
+                    console.log('[UPLOAD] Added:', file.name);
+                });
+                this.on('success', function(file, response) {
+                    console.log('[UPLOAD] Success:', file.name);
+                    if (response && response.exception === 'true') {
+                        alert(response.exception_data);
+                    }
+                    app.refreshFiles();
+                });
+                this.on('error', function(file, errorMessage) {
+                    console.error('[UPLOAD] Error:', errorMessage);
+                });
+            }
+        });
+
+        document.getElementById('upload_file').addEventListener('click', function(e) {
+            e.preventDefault();
+            myDropzone.processQueue();
+        });
+    </script>
+</body>
+</html>

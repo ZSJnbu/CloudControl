@@ -1,0 +1,212 @@
+/* ========== 全局样式 ========== */
+:root {
+  --primary-color: #4a90d9;
+  --primary-dark: #357abd;
+  --secondary-color: #6c757d;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --bg-color: #f0f2f5;
+  --card-bg: #ffffff;
+  --text-color: #333333;
+  --text-muted: #6c757d;
+  --border-color: #e0e0e0;
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  --shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.15);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--bg-color);
+  color: var(--text-color);
+  line-height: 1.6;
+}
+
+/* ========== 导航栏 ========== */
+.navbar {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%) !important;
+  border: none !important;
+  box-shadow: var(--shadow);
+  padding: 10px 0;
+  margin-bottom: 0 !important;
+}
+
+.navbar-default {
+  border-radius: 0;
+}
+
+.navbar-brand {
+  color: #fff !important;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.navbar-brand b,
+.navbar-brand strong {
+  color: #fff;
+}
+
+.navbar-nav > li > a {
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-weight: 500;
+  padding: 15px 20px;
+  transition: all 0.3s ease;
+  border-radius: var(--radius-sm);
+  margin: 0 5px;
+}
+
+.navbar-nav > li > a:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #fff !important;
+}
+
+.navbar-nav > li.active > a {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
+}
+
+.navbar-text {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.navbar-text a {
+  color: #fff !important;
+  text-decoration: underline;
+}
+
+/* ========== 容器 ========== */
+.container-fluid {
+  padding: 0 20px 20px 20px;
+}
+
+/* ========== 搜索栏 ========== */
+.form-inline {
+  background: var(--card-bg);
+  padding: 15px 20px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin: 20px 0;
+}
+
+.input-group {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.input-group-addon {
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.form-control {
+  border: 1px solid var(--border-color);
+  box-shadow: none;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.15);
+}
+
+/* ========== 颜色类 ========== */
+.color-inverse {
+  color: white;
+  background-color: black;
+}
+
+.color-green {
+  color: var(--success-color);
+}
+
+.color-red {
+  color: var(--danger-color);
+}
+
+.color-rest {
+  color: var(--success-color);
+}
+
+.color-busy {
+  color: var(--danger-color);
+}
+
+.color-yellow {
+  color: var(--warning-color);
+}
+
+/* ========== 电池图标 ========== */
+.fa-fix-height {
+  line-height: 24px;
+}
+
+.fa-battery-4 { color: var(--success-color); }
+.fa-battery-3 { color: #8bc34a; }
+.fa-battery-2 { color: var(--warning-color); }
+.fa-battery-1 { color: #ff9800; }
+.fa-battery-0 { color: var(--danger-color); }
+
+tr.offline {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+/* ========== 按钮 ========== */
+.btn {
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border: none;
+  padding: 8px 16px;
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(74, 144, 217, 0.4);
+}
+
+.btn-success {
+  background: var(--success-color);
+}
+
+.btn-success:hover {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+.btn-default {
+  background: #fff;
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+}
+
+.btn-default:hover {
+  background: var(--bg-color);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+/* ========== 复选框美化 ========== */
+input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  cursor: pointer;
+  accent-color: var(--primary-color);
+}
+
+label {
+  cursor: pointer;
+  font-weight: 500;
+}
