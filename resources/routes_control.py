@@ -439,8 +439,25 @@ async def inspector_screenshot(request: web.Request):
         # 真实设备：使用缓存的设备连接
         serial = device.get('serial')
         d = get_cached_device(device['ip'], device['port'], serial=serial)
+
+        # 获取质量参数 (默认70，平衡质量和速度)
+        quality = int(request.query.get('quality', 70))
+        quality = max(30, min(95, quality))
+
+        # 获取缩放参数 (可选，减少数据量)
+        scale = float(request.query.get('scale', 1.0))
+        scale = max(0.25, min(1.0, scale))
+
         buffer = BytesIO()
-        d.screenshot().convert("RGB").save(buffer, format='JPEG')
+        img = d.screenshot()
+
+        # 可选缩放
+        if scale < 1.0:
+            new_size = (int(img.width * scale), int(img.height * scale))
+            img = img.resize(new_size, resample=1)  # 1 = BILINEAR, 快速
+
+        # 保存为JPEG，优化压缩
+        img.convert("RGB").save(buffer, format='JPEG', quality=quality, optimize=True)
         b64data = base64.b64encode(buffer.getvalue())
         response = {
             "type": "jpeg",
@@ -486,12 +503,22 @@ async def inspector_touch(request: web.Request):
             serial = device.get('serial')
             d = get_cached_device(device['ip'], device['port'], serial=serial)
 
+            # 在线程池中执行触控操作 (非阻塞)
+            import asyncio
+            loop = asyncio.get_event_loop()
+
             if action == "click":
-                d.device.click(int(x), int(y))
+                await loop.run_in_executor(None, lambda: d.device.click(int(x), int(y)))
             elif action == "swipe":
                 x2 = data.get("x2", x)
                 y2 = data.get("y2", y)
-                d.device.swipe(int(x), int(y), int(x2), int(y2), duration=0.2)
+                # 使用前端传来的duration，默认200ms
+                duration = data.get("duration", 200) / 1000.0  # 转换为秒
+                duration = max(0.05, min(2.0, duration))  # 限制在50ms-2s
+                await loop.run_in_executor(
+                    None,
+                    lambda: d.device.swipe(int(x), int(y), int(x2), int(y2), duration=duration)
+                )
 
             return web.json_response({"status": "ok"})
         except Exception as e:
@@ -653,7 +680,7 @@ async def inspector_upload(request: web.Request):
 @route.get("/inspector/{udid}/screenshot/img")
 async def inspector_screenshot_img(request: web.Request):
     """
-    直接返回截图图片（使用缓存连接）
+    直接返回截图图片（优化版：支持质量和缩放参数）
     :param request:
     :return:
     """
@@ -664,9 +691,30 @@ async def inspector_screenshot_img(request: web.Request):
             # 使用缓存的设备连接
             serial = device.get('serial') if device else None
             d = get_cached_device(device['ip'], device['port'], serial=serial)
+
+            # 获取优化参数
+            quality = int(request.query.get('q', 70))
+            quality = max(30, min(95, quality))
+            scale = float(request.query.get('s', 1.0))
+            scale = max(0.25, min(1.0, scale))
+
             buffer = BytesIO()
-            d.screenshot().convert("RGB").save(buffer, format='JPEG')
-            return web.Response(body=buffer.getvalue(), content_type='image/jpeg')
+            img = d.screenshot()
+
+            # 可选缩放
+            if scale < 1.0:
+                new_size = (int(img.width * scale), int(img.height * scale))
+                img = img.resize(new_size, resample=1)
+
+            img.convert("RGB").save(buffer, format='JPEG', quality=quality, optimize=True)
+
+            # 添加缓存控制头
+            headers = {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            }
+            return web.Response(body=buffer.getvalue(), content_type='image/jpeg', headers=headers)
         except Exception as e:
             logger.error(f"截图失败: {e}")
             raise web.HTTPNotFound()

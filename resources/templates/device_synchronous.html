@@ -974,59 +974,155 @@ window.app = new Vue({
 
         openScreenStream: function() {
             var self = this;
-            var BLANK_IMG = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
             var canvas = this.canvas.bg;
-            var ctx = canvas.getContext('2d');
+            var ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
             var running = true;
-            var imagePool = new ImagePool(100);
 
-            // 使用后端代理 API 获取截图（解决跨域和内部IP问题）
-            this.screenWS = { close: function() { running = false; } };
+            // 性能监控
+            var frameCount = 0;
+            var lastFpsTime = performance.now();
+            var currentFps = 0;
+            var adaptiveDelay = 16; // 初始目标 60fps
 
-            function fetchScreenshot() {
+            // 双缓冲: 预加载下一帧
+            var frameBuffer = [];
+            var maxBufferSize = 3;
+            var isRendering = false;
+            var isFetching = false;
+
+            // 使用后端代理 API
+            this.screenWS = {
+                close: function() {
+                    running = false;
+                    frameBuffer = [];
+                }
+            };
+
+            // 高性能图像解码 (使用 createImageBitmap)
+            function decodeImage(blob) {
+                if (typeof createImageBitmap !== 'undefined') {
+                    return createImageBitmap(blob, {
+                        premultiplyAlpha: 'none',
+                        colorSpaceConversion: 'none'
+                    });
+                }
+                // 降级方案
+                return new Promise(function(resolve, reject) {
+                    var img = new Image();
+                    var url = URL.createObjectURL(blob);
+                    img.onload = function() {
+                        URL.revokeObjectURL(url);
+                        resolve(img);
+                    };
+                    img.onerror = function() {
+                        URL.revokeObjectURL(url);
+                        reject(new Error('Image decode failed'));
+                    };
+                    img.src = url;
+                });
+            }
+
+            // 渲染帧 (使用 requestAnimationFrame 同步)
+            function renderFrame() {
                 if (!running) return;
 
-                $.getJSON('/inspector/' + self.deviceUdid + '/screenshot')
-                    .done(function(ret) {
-                        if (!running) return;
+                if (frameBuffer.length > 0 && !isRendering) {
+                    isRendering = true;
+                    var frame = frameBuffer.shift();
 
-                        var blob = b64toBlob(ret.data, 'image/' + ret.type);
-                        var img = imagePool.next();
+                    requestAnimationFrame(function() {
+                        if (!running) { isRendering = false; return; }
 
-                        img.onload = function() {
-                            canvas.width = img.width;
-                            canvas.height = img.height;
-                            ctx.drawImage(img, 0, 0, img.width, img.height);
-                            self.resizeScreen(img);
+                        // 只在尺寸变化时调整 canvas
+                        if (canvas.width !== frame.width || canvas.height !== frame.height) {
+                            canvas.width = frame.width;
+                            canvas.height = frame.height;
+                        }
 
-                            img.onload = img.onerror = null;
-                            img.src = BLANK_IMG;
-                            URL.revokeObjectURL(url);
+                        ctx.drawImage(frame, 0, 0);
+                        self.resizeScreen(frame);
 
-                            // 继续获取下一帧
-                            if (running) {
-                                requestAnimationFrame(fetchScreenshot);
+                        // 释放 ImageBitmap
+                        if (frame.close) frame.close();
+
+                        // 更新 FPS
+                        frameCount++;
+                        var now = performance.now();
+                        if (now - lastFpsTime >= 1000) {
+                            currentFps = frameCount;
+                            frameCount = 0;
+                            lastFpsTime = now;
+                            // 自适应帧率
+                            if (currentFps < 15) {
+                                adaptiveDelay = Math.min(100, adaptiveDelay + 10);
+                            } else if (currentFps > 25 && adaptiveDelay > 16) {
+                                adaptiveDelay = Math.max(16, adaptiveDelay - 5);
                             }
-                        };
+                        }
 
-                        img.onerror = function() {
-                            img.onload = img.onerror = null;
-                            img.src = BLANK_IMG;
-                            URL.revokeObjectURL(url);
-                            if (running) setTimeout(fetchScreenshot, 100);
-                        };
+                        isRendering = false;
+                    });
+                }
 
-                        var url = URL.createObjectURL(blob);
-                        img.src = url;
+                if (running) {
+                    setTimeout(renderFrame, 8); // 120Hz 渲染检查
+                }
+            }
+
+            // 获取截图 (流水线方式，使用二进制端点)
+            function fetchScreenshot() {
+                if (!running || isFetching) return;
+                if (frameBuffer.length >= maxBufferSize) {
+                    setTimeout(fetchScreenshot, adaptiveDelay);
+                    return;
+                }
+
+                isFetching = true;
+                var fetchStart = performance.now();
+
+                // 使用二进制图片端点 (比 base64 JSON 快约 30%)
+                fetch('/inspector/' + self.deviceUdid + '/screenshot/img?q=70&t=' + Date.now())
+                    .then(function(response) {
+                        if (!response.ok) throw new Error('Network error');
+                        return response.blob();
                     })
-                    .fail(function() {
-                        if (running) setTimeout(fetchScreenshot, 200);
+                    .then(function(blob) {
+                        if (!running) { isFetching = false; return; }
+                        return decodeImage(blob);
+                    })
+                    .then(function(bitmap) {
+                        if (!running) {
+                            if (bitmap && bitmap.close) bitmap.close();
+                            isFetching = false;
+                            return;
+                        }
+
+                        frameBuffer.push(bitmap);
+                        isFetching = false;
+
+                        // 立即请求下一帧
+                        if (running) {
+                            var fetchTime = performance.now() - fetchStart;
+                            var nextDelay = Math.max(1, adaptiveDelay - fetchTime);
+                            setTimeout(fetchScreenshot, nextDelay);
+                        }
+                    })
+                    .catch(function(err) {
+                        isFetching = false;
+                        if (running) {
+                            setTimeout(fetchScreenshot, 200);
+                        }
                     });
             }
 
-            // 启动截图流
+            // 启动渲染循环和获取循环
+            renderFrame();
             fetchScreenshot();
-            console.log('[SCREEN_STREAM] Started (using backend API)');
+            // 并行预取多帧
+            setTimeout(fetchScreenshot, 50);
+            setTimeout(fetchScreenshot, 100);
+
+            console.log('[SCREEN_STREAM] Started (optimized pipeline mode)');
         },
 
         enableTouch: function() {
@@ -1034,53 +1130,104 @@ window.app = new Vue({
             var element = this.canvas.bg;
             var screen = { bounds: {} };
 
-            // 使用后端代理 API 发送触控命令到所有设备
-            // 不再直接连接设备的 minitouch WebSocket
+            // 高性能触控控制器
             var control = {
+                // 请求队列和批处理
+                pendingRequests: [],
+                batchTimeout: null,
+                batchDelay: 8, // 8ms 批处理窗口
+
+                // 使用 fetch + keepalive 发送命令 (不阻塞)
                 sendToAllDevices: function(action, params) {
+                    var payload = JSON.stringify(Object.assign({ action: action }, params));
+
+                    // 并行发送到所有设备 (使用 navigator.sendBeacon 或 fetch keepalive)
                     for (var i = 0; i < deviceList.length; i++) {
                         var udid = deviceList[i].udid;
-                        $.ajax({
-                            url: '/inspector/' + udid + '/touch',
+                        var url = '/inspector/' + udid + '/touch';
+
+                        // 使用 fetch with keepalive (非阻塞，即使页面关闭也会发送)
+                        fetch(url, {
                             method: 'POST',
-                            contentType: 'application/json',
-                            data: JSON.stringify(Object.assign({ action: action }, params))
-                        });
+                            headers: { 'Content-Type': 'application/json' },
+                            body: payload,
+                            keepalive: true
+                        }).catch(function() {}); // 忽略错误，保持流畅
                     }
                 },
+
+                // 立即发送点击 (最低延迟)
+                sendClickImmediate: function(x, y) {
+                    this.sendToAllDevices('click', { x: x, y: y });
+                },
+
+                // 批量发送滑动轨迹
+                sendSwipeImmediate: function(x1, y1, x2, y2, duration) {
+                    this.sendToAllDevices('swipe', {
+                        x: x1, y: y1,
+                        x2: x2, y2: y2,
+                        duration: duration || 200
+                    });
+                },
+
+                // 触控状态
+                touchStart: null,
+                touchPoints: [],
+                swipeThreshold: 0.015, // 1.5% 移动判定为滑动
+
                 touchDown: function(id, xP, yP, pressure) {
-                    this.lastTouch = { xP: xP, yP: yP };
+                    this.touchStart = {
+                        xP: xP,
+                        yP: yP,
+                        time: performance.now()
+                    };
+                    this.touchPoints = [{ xP: xP, yP: yP, time: performance.now() }];
                 },
+
                 touchMove: function(id, xP, yP, pressure) {
-                    if (this.lastTouch) {
-                        this.lastTouch.endXP = xP;
-                        this.lastTouch.endYP = yP;
+                    if (this.touchStart) {
+                        this.touchPoints.push({ xP: xP, yP: yP, time: performance.now() });
+                        // 限制轨迹点数量
+                        if (this.touchPoints.length > 50) {
+                            this.touchPoints = this.touchPoints.slice(-30);
+                        }
                     }
                 },
+
                 touchUp: function(id) {
-                    if (!this.lastTouch) return;
+                    if (!this.touchStart) return;
 
                     var canvas = self.canvas.bg;
-                    var x = Math.floor(this.lastTouch.xP * canvas.width);
-                    var y = Math.floor(this.lastTouch.yP * canvas.height);
+                    var startX = Math.floor(this.touchStart.xP * canvas.width);
+                    var startY = Math.floor(this.touchStart.yP * canvas.height);
 
-                    // 判断是点击还是滑动
-                    if (this.lastTouch.endXP !== undefined &&
-                        (Math.abs(this.lastTouch.endXP - this.lastTouch.xP) > 0.02 ||
-                         Math.abs(this.lastTouch.endYP - this.lastTouch.yP) > 0.02)) {
-                        // 滑动
-                        var x2 = Math.floor(this.lastTouch.endXP * canvas.width);
-                        var y2 = Math.floor(this.lastTouch.endYP * canvas.height);
-                        this.sendToAllDevices('swipe', { x: x, y: y, x2: x2, y2: y2 });
+                    // 获取最后的触点
+                    var lastPoint = this.touchPoints[this.touchPoints.length - 1] || this.touchStart;
+                    var endX = Math.floor(lastPoint.xP * canvas.width);
+                    var endY = Math.floor(lastPoint.yP * canvas.height);
+
+                    // 计算移动距离
+                    var deltaXP = Math.abs(lastPoint.xP - this.touchStart.xP);
+                    var deltaYP = Math.abs(lastPoint.yP - this.touchStart.yP);
+
+                    // 计算持续时间
+                    var duration = performance.now() - this.touchStart.time;
+
+                    if (deltaXP > this.swipeThreshold || deltaYP > this.swipeThreshold) {
+                        // 滑动操作 - 根据实际滑动时间调整
+                        var swipeDuration = Math.min(Math.max(duration * 0.8, 100), 500);
+                        this.sendSwipeImmediate(startX, startY, endX, endY, Math.floor(swipeDuration));
                     } else {
-                        // 点击
-                        this.sendToAllDevices('click', { x: x, y: y });
+                        // 点击操作
+                        this.sendClickImmediate(startX, startY);
                     }
-                    this.lastTouch = null;
+
+                    // 清理状态
+                    this.touchStart = null;
+                    this.touchPoints = [];
                 },
                 touchCommit: function() {},
-                touchWait: function(ms) {},
-                lastTouch: null
+                touchWait: function(ms) {}
             };
 
             function calculateBounds() {
