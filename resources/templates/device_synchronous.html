@@ -506,6 +506,212 @@
             text-align: right;
         }
 
+        /* 快捷短语面板 */
+        .gc-phrases-panel {
+            width: 280px;
+            min-width: 200px;
+            display: flex;
+            flex-direction: column;
+            background: var(--term-bg);
+            border-left: 1px solid var(--term-border);
+            transition: width 0.3s;
+        }
+
+        .gc-phrases-panel.collapsed {
+            width: 40px;
+            min-width: 40px;
+        }
+
+        .gc-phrases-header {
+            padding: 12px 16px;
+            background: var(--term-bg-dark);
+            border-bottom: 1px solid var(--term-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .gc-phrases-panel.collapsed .gc-phrases-header {
+            padding: 12px 8px;
+            justify-content: center;
+        }
+
+        .gc-phrases-title {
+            font-family: var(--term-font);
+            font-size: 0.9rem;
+            color: var(--term-green);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .gc-phrases-panel.collapsed .gc-phrases-title span {
+            display: none;
+        }
+
+        .gc-phrases-toggle {
+            background: transparent;
+            border: none;
+            color: var(--term-text-dim);
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .gc-phrases-toggle:hover {
+            color: var(--term-green);
+        }
+
+        .gc-phrases-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .gc-phrases-panel.collapsed .gc-phrases-content {
+            display: none;
+        }
+
+        .gc-phrase-add {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .gc-phrase-input {
+            flex: 1;
+            background: var(--term-black);
+            border: 1px solid var(--term-border);
+            color: var(--term-green);
+            padding: 8px;
+            font-family: var(--term-font);
+            font-size: 0.8rem;
+            outline: none;
+        }
+
+        .gc-phrase-input:focus {
+            border-color: var(--term-green);
+        }
+
+        .gc-phrase-add-btn {
+            background: var(--term-green);
+            border: none;
+            color: var(--term-black);
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: var(--term-font);
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .gc-phrase-add-btn:hover {
+            background: var(--term-cyan);
+        }
+
+        .gc-phrases-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .gc-phrase-item {
+            background: var(--term-bg-dark);
+            border: 1px solid var(--term-border);
+            padding: 10px;
+            transition: all 0.2s;
+        }
+
+        .gc-phrase-item:hover {
+            border-color: var(--term-green);
+        }
+
+        .gc-phrase-text {
+            font-family: var(--term-font);
+            font-size: 0.85rem;
+            color: var(--term-text);
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .gc-phrase-actions {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .gc-phrase-btn {
+            background: transparent;
+            border: 1px solid var(--term-border);
+            color: var(--term-text-dim);
+            padding: 4px 8px;
+            font-family: var(--term-font);
+            font-size: 0.65rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .gc-phrase-btn:hover {
+            border-color: var(--term-green);
+            color: var(--term-green);
+        }
+
+        .gc-phrase-btn.primary {
+            background: var(--term-green);
+            border-color: var(--term-green);
+            color: var(--term-black);
+        }
+
+        .gc-phrase-btn.primary:hover {
+            background: var(--term-cyan);
+            border-color: var(--term-cyan);
+        }
+
+        .gc-phrase-btn.danger:hover {
+            border-color: var(--term-red);
+            color: var(--term-red);
+        }
+
+        .gc-phrases-empty {
+            text-align: center;
+            padding: 20px;
+            color: var(--term-text-dim);
+            font-family: var(--term-font);
+            font-size: 0.8rem;
+        }
+
+        .gc-phrases-footer {
+            padding: 10px 12px;
+            background: var(--term-bg-dark);
+            border-top: 1px solid var(--term-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .gc-phrases-panel.collapsed .gc-phrases-footer {
+            display: none;
+        }
+
+        .gc-phrases-count {
+            font-family: var(--term-font);
+            font-size: 0.7rem;
+            color: var(--term-text-dim);
+        }
+
+        .gc-phrases-clear {
+            background: transparent;
+            border: 1px solid var(--term-border);
+            color: var(--term-text-dim);
+            padding: 4px 8px;
+            font-family: var(--term-font);
+            font-size: 0.65rem;
+            cursor: pointer;
+        }
+
+        .gc-phrases-clear:hover {
+            border-color: var(--term-red);
+            color: var(--term-red);
+        }
+
         .gc-device-card.is-master {
             border-color: var(--term-green);
             box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
@@ -836,6 +1042,73 @@
                 </div>
             </div>
         </div>
+
+        <!-- Quick Phrases Panel -->
+        <div class="gc-phrases-panel" :class="{collapsed: phrasesCollapsed}">
+            <div class="gc-phrases-header">
+                <div class="gc-phrases-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <span>QUICK_PHRASES</span>
+                </div>
+                <button class="gc-phrases-toggle" @click="phrasesCollapsed = !phrasesCollapsed" :title="phrasesCollapsed ? '展开' : '收起'">
+                    <svg v-if="phrasesCollapsed" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                    <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="gc-phrases-content">
+                <!-- Add new phrase -->
+                <div class="gc-phrase-add">
+                    <input type="text"
+                           class="gc-phrase-input"
+                           v-model="newPhrase"
+                           @keyup.enter="addPhrase"
+                           placeholder="添加常用短语...">
+                    <button class="gc-phrase-add-btn" @click="addPhrase" title="添加">+</button>
+                </div>
+
+                <!-- Phrases list -->
+                <div class="gc-phrases-list" v-if="phrases.length > 0">
+                    <div v-for="(phrase, index) in phrases" :key="index" class="gc-phrase-item">
+                        <div class="gc-phrase-text">{{ phrase }}</div>
+                        <div class="gc-phrase-actions">
+                            <button class="gc-phrase-btn primary" @click="sendPhrase(phrase)" title="发送到目标设备">
+                                发送
+                            </button>
+                            <button class="gc-phrase-btn" @click="sendPhraseToAll(phrase)" title="发送到所有设备">
+                                全部
+                            </button>
+                            <button class="gc-phrase-btn" @click="copyPhrase(phrase)" title="复制到剪贴板">
+                                复制
+                            </button>
+                            <button class="gc-phrase-btn" @click="fillPhrase(phrase)" title="填入输入框">
+                                填入
+                            </button>
+                            <button class="gc-phrase-btn danger" @click="removePhrase(index)" title="删除">
+                                ×
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty state -->
+                <div v-else class="gc-phrases-empty">
+                    <div style="margin-bottom: 8px;">// 暂无保存的短语</div>
+                    <div style="font-size: 0.7rem;">添加常用文本以便快速发送</div>
+                </div>
+            </div>
+
+            <div class="gc-phrases-footer">
+                <span class="gc-phrases-count">{{ phrases.length }} 条短语</span>
+                <button class="gc-phrases-clear" @click="clearAllPhrases" v-if="phrases.length > 0">清空全部</button>
+            </div>
+        </div>
     </div>
 </div>
 {% endraw %}
@@ -894,6 +1167,10 @@ window.app = new Vue({
         cursor: {},
         inputText: '',  // 文本输入框内容
         targetMode: 'all',  // 目标模式: 'all', 'master', 'selected'
+        // 快捷短语
+        phrases: [],
+        newPhrase: '',
+        phrasesCollapsed: false,
     },
     computed: {
         deviceUrl: function() {
@@ -951,6 +1228,9 @@ window.app = new Vue({
 
         // 更新同步延迟显示
         this.updateLatencyDisplay();
+
+        // 加载保存的快捷短语
+        this.loadPhrases();
     },
     methods: {
         // 获取目标设备列表
@@ -1140,6 +1420,102 @@ window.app = new Vue({
             for (var i = 0; i < 50; i++) {
                 this.keyevent('DEL');
             }
+        },
+
+        // ===== 快捷短语功能 =====
+
+        // 从 localStorage 加载短语
+        loadPhrases: function() {
+            try {
+                var saved = localStorage.getItem('cloudcontrol_phrases');
+                if (saved) {
+                    this.phrases = JSON.parse(saved);
+                }
+            } catch (e) {
+                console.error('[PHRASES] 加载失败:', e);
+            }
+        },
+
+        // 保存短语到 localStorage
+        savePhrases: function() {
+            try {
+                localStorage.setItem('cloudcontrol_phrases', JSON.stringify(this.phrases));
+            } catch (e) {
+                console.error('[PHRASES] 保存失败:', e);
+            }
+        },
+
+        // 添加新短语
+        addPhrase: function() {
+            var text = this.newPhrase.trim();
+            if (!text) return;
+            if (this.phrases.indexOf(text) === -1) {
+                this.phrases.unshift(text);
+                this.savePhrases();
+            }
+            this.newPhrase = '';
+        },
+
+        // 删除短语
+        removePhrase: function(index) {
+            this.phrases.splice(index, 1);
+            this.savePhrases();
+        },
+
+        // 清空所有短语
+        clearAllPhrases: function() {
+            if (confirm('确定要清空所有保存的短语吗？')) {
+                this.phrases = [];
+                this.savePhrases();
+            }
+        },
+
+        // 发送短语到目标设备
+        sendPhrase: function(text) {
+            var targets = this.getTargetDevices();
+            console.log('[PHRASES] 发送到', targets.length, '台设备:', text);
+            for (var i = 0; i < targets.length; i++) {
+                fetch('/inspector/' + targets[i].udid + '/input', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+            }
+        },
+
+        // 发送短语到所有设备
+        sendPhraseToAll: function(text) {
+            console.log('[PHRASES] 发送到所有设备:', text);
+            for (var i = 0; i < deviceList.length; i++) {
+                fetch('/inspector/' + deviceList[i].udid + '/input', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+            }
+        },
+
+        // 复制短语到剪贴板
+        copyPhrase: function(text) {
+            var self = this;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(function() {
+                    console.log('[PHRASES] 已复制:', text);
+                });
+            } else {
+                // 降级方案
+                var textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            }
+        },
+
+        // 填入输入框
+        fillPhrase: function(text) {
+            this.inputText = text;
         },
 
         resizeScreen: function(img) {
