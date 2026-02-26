@@ -4,6 +4,7 @@
 测试系统性能、延迟、吞吐量等
 """
 import pytest
+import pytest_asyncio
 import aiohttp
 import asyncio
 import time
@@ -18,7 +19,7 @@ TIMEOUT = aiohttp.ClientTimeout(total=60)
 class TestLatencyMetrics:
     """延迟指标测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -151,7 +152,7 @@ class TestLatencyMetrics:
 class TestThroughput:
     """吞吐量测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -231,7 +232,7 @@ class TestThroughput:
 class TestStress:
     """压力测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -308,7 +309,7 @@ class TestStress:
 class TestMemoryStability:
     """内存稳定性测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -355,7 +356,7 @@ class TestMemoryStability:
 class TestQualityPresetPerformance:
     """质量预设性能对比"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:

@@ -4,6 +4,7 @@
 测试点击、滑动、按键等触控操作
 """
 import pytest
+import pytest_asyncio
 import aiohttp
 import asyncio
 import time
@@ -16,7 +17,7 @@ TIMEOUT = aiohttp.ClientTimeout(total=30)
 class TestTouchClick:
     """点击命令测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -103,7 +104,7 @@ class TestTouchClick:
 class TestTouchSwipe:
     """滑动命令测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -258,7 +259,7 @@ class TestTouchSwipe:
 class TestKeyEvents:
     """按键事件测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -321,7 +322,7 @@ class TestKeyEvents:
 class TestTextInput:
     """文本输入测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -426,7 +427,7 @@ class TestTextInput:
 class TestTouchConcurrency:
     """触控命令并发测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:

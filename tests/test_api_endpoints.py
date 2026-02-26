@@ -4,6 +4,7 @@ API 端点测试
 测试所有 HTTP API 端点的功能和响应
 """
 import pytest
+import pytest_asyncio
 import aiohttp
 import asyncio
 import json
@@ -39,7 +40,7 @@ class TestHealthEndpoints:
 class TestDeviceEndpoints:
     """设备相关端点测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -108,7 +109,7 @@ class TestDeviceEndpoints:
 class TestTouchEndpoints:
     """触控端点测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -185,7 +186,7 @@ class TestTouchEndpoints:
 class TestInputEndpoints:
     """文本输入端点测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -270,7 +271,7 @@ class TestGroupControlEndpoints:
             udids = [d['udid'] for d in devices[:2]]
             form_data = aiohttp.FormData()
             for udid in udids:
-                form_data.add_field('udid', udid)
+                form_data.add_field('devices', udid)  # 服务器期望 'devices' 字段
 
             async with session.post(
                 f"{BASE_URL}/async",

@@ -4,6 +4,7 @@
 测试截图 API、缓存、质量设置等
 """
 import pytest
+import pytest_asyncio
 import aiohttp
 import asyncio
 import time
@@ -23,7 +24,7 @@ TIMEOUT = aiohttp.ClientTimeout(total=30)
 class TestScreenshotBasic:
     """截图基础功能测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -101,7 +102,7 @@ class TestScreenshotBasic:
 class TestScreenshotCache:
     """截图缓存测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -191,7 +192,7 @@ class TestScreenshotCache:
 class TestScreenshotDeduplication:
     """截图请求去重测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -238,7 +239,7 @@ class TestScreenshotDeduplication:
 class TestScreenshotQualityPresets:
     """截图质量预设测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -306,7 +307,7 @@ class TestScreenshotQualityPresets:
 class TestScreenshotImageValidation:
     """截图图像验证测试 (需要 PIL)"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:

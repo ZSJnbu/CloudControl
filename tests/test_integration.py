@@ -4,6 +4,7 @@
 测试端到端工作流和系统集成
 """
 import pytest
+import pytest_asyncio
 import aiohttp
 import asyncio
 import time
@@ -16,7 +17,7 @@ TIMEOUT = aiohttp.ClientTimeout(total=60)
 class TestDeviceWorkflow:
     """设备操作工作流测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -37,9 +38,9 @@ class TestDeviceWorkflow:
             # 1. 获取设备列表
             async with session.get(f"{BASE_URL}/list") as resp:
                 assert resp.status == 200
-                data = await resp.json()
-                assert 'devices' in data
-                print(f"Step 1: Found {len(data['devices'])} devices")
+                devices = await resp.json()  # API 直接返回数组
+                assert isinstance(devices, list)
+                print(f"Step 1: Found {len(devices)} devices")
 
             # 2. 获取截图
             async with session.get(
@@ -130,7 +131,7 @@ class TestDeviceWorkflow:
 class TestGroupControlWorkflow:
     """群控工作流测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def devices(self):
         """获取所有测试设备"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -151,7 +152,7 @@ class TestGroupControlWorkflow:
             # POST 请求群控页面
             form_data = aiohttp.FormData()
             for d in devices:
-                form_data.add_field('udid', d['udid'])
+                form_data.add_field('devices', d['udid'])  # 服务器期望 'devices' 字段
 
             async with session.post(
                 f"{BASE_URL}/async",
@@ -212,7 +213,7 @@ class TestGroupControlWorkflow:
 class TestErrorRecovery:
     """错误恢复测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -279,7 +280,7 @@ class TestDataConsistency:
 class TestSessionManagement:
     """会话管理测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
@@ -332,7 +333,7 @@ class TestSessionManagement:
 class TestE2EScenarios:
     """端到端场景测试"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def device_udid(self):
         """获取测试设备 UDID"""
         async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
