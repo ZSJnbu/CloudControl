@@ -98,6 +98,158 @@
             border-right: 1px solid var(--term-border);
         }
 
+        /* 性能监控面板 */
+        .gc-perf-panel {
+            height: 180px;
+            min-height: 120px;
+            background: var(--term-bg-dark);
+            border-top: 1px solid var(--term-border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .gc-perf-header {
+            padding: 8px 12px;
+            background: var(--term-bg);
+            border-bottom: 1px solid var(--term-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .gc-perf-title {
+            font-family: var(--term-font);
+            font-size: 0.8rem;
+            color: var(--term-green);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .gc-perf-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .gc-perf-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .gc-perf-card {
+            background: var(--term-bg);
+            border: 1px solid var(--term-border);
+            padding: 8px;
+        }
+
+        .gc-perf-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .gc-perf-card-title {
+            font-family: var(--term-font);
+            font-size: 0.7rem;
+            color: var(--term-text-dim);
+            text-transform: uppercase;
+        }
+
+        .gc-perf-card-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--term-green);
+        }
+
+        .gc-perf-card-status.warning {
+            background: var(--term-yellow);
+        }
+
+        .gc-perf-card-status.error {
+            background: var(--term-red);
+        }
+
+        .gc-perf-card-value {
+            font-family: var(--term-font);
+            font-size: 1.2rem;
+            color: var(--term-green);
+            font-weight: bold;
+        }
+
+        .gc-perf-card-value.warning {
+            color: var(--term-yellow);
+        }
+
+        .gc-perf-card-value.error {
+            color: var(--term-red);
+        }
+
+        .gc-perf-card-unit {
+            font-size: 0.7rem;
+            color: var(--term-text-dim);
+            margin-left: 2px;
+        }
+
+        /* 设备性能列表 */
+        .gc-perf-devices {
+            margin-top: 8px;
+        }
+
+        .gc-perf-device-row {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            background: var(--term-bg);
+            border: 1px solid var(--term-border);
+            margin-bottom: 4px;
+            font-family: var(--term-font);
+            font-size: 0.7rem;
+        }
+
+        .gc-perf-device-name {
+            flex: 1;
+            color: var(--term-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .gc-perf-device-stats {
+            display: flex;
+            gap: 12px;
+        }
+
+        .gc-perf-device-stat {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .gc-perf-device-stat-label {
+            color: var(--term-text-dim);
+        }
+
+        .gc-perf-device-stat-value {
+            color: var(--term-cyan);
+        }
+
+        .gc-perf-device-stat-value.good {
+            color: var(--term-green);
+        }
+
+        .gc-perf-device-stat-value.warning {
+            color: var(--term-yellow);
+        }
+
+        .gc-perf-device-stat-value.error {
+            color: var(--term-red);
+        }
+
         .gc-master-header {
             padding: 12px 16px;
             background: var(--term-bg-dark);
@@ -947,6 +1099,65 @@
                     </svg>
                 </button>
             </div>
+
+            <!-- 性能监控面板 -->
+            <div class="gc-perf-panel">
+                <div class="gc-perf-header">
+                    <div class="gc-perf-title">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                        </svg>
+                        PERFORMANCE
+                    </div>
+                    <span style="font-size: 0.65rem; color: var(--term-text-dim);">
+                        FPS: <span style="color: var(--term-cyan);">{{ perfStats.fps }}</span>
+                    </span>
+                </div>
+                <div class="gc-perf-content">
+                    <!-- 总体性能指标 -->
+                    <div class="gc-perf-grid">
+                        <div class="gc-perf-card">
+                            <div class="gc-perf-card-header">
+                                <span class="gc-perf-card-title">截图延迟</span>
+                                <span class="gc-perf-card-status" :class="perfStats.screenshot > 500 ? 'error' : perfStats.screenshot > 200 ? 'warning' : ''"></span>
+                            </div>
+                            <div class="gc-perf-card-value" :class="perfStats.screenshot > 500 ? 'error' : perfStats.screenshot > 200 ? 'warning' : ''">
+                                {{ perfStats.screenshot }}<span class="gc-perf-card-unit">ms</span>
+                            </div>
+                        </div>
+                        <div class="gc-perf-card">
+                            <div class="gc-perf-card-header">
+                                <span class="gc-perf-card-title">指令延迟</span>
+                                <span class="gc-perf-card-status" :class="perfStats.command > 100 ? 'error' : perfStats.command > 50 ? 'warning' : ''"></span>
+                            </div>
+                            <div class="gc-perf-card-value" :class="perfStats.command > 100 ? 'error' : perfStats.command > 50 ? 'warning' : ''">
+                                {{ perfStats.command }}<span class="gc-perf-card-unit">ms</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 各设备性能 -->
+                    <div class="gc-perf-devices">
+                        <div v-for="(perf, index) in devicePerfList" :key="index" class="gc-perf-device-row">
+                            <span class="gc-perf-device-name">{{ perf.name }}</span>
+                            <div class="gc-perf-device-stats">
+                                <div class="gc-perf-device-stat">
+                                    <span class="gc-perf-device-stat-label">CMD:</span>
+                                    <span class="gc-perf-device-stat-value" :class="perf.cmdLatency > 100 ? 'error' : perf.cmdLatency > 50 ? 'warning' : 'good'">
+                                        {{ perf.cmdLatency }}ms
+                                    </span>
+                                </div>
+                                <div class="gc-perf-device-stat">
+                                    <span class="gc-perf-device-stat-label">OK:</span>
+                                    <span class="gc-perf-device-stat-value" :class="perf.successRate < 90 ? 'error' : perf.successRate < 99 ? 'warning' : 'good'">
+                                        {{ perf.successRate }}%
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Resizer -->
@@ -1171,6 +1382,17 @@ window.app = new Vue({
         phrases: [],
         newPhrase: '',
         phrasesCollapsed: false,
+        // 性能监控
+        perfStats: {
+            fps: 0,
+            screenshot: 0,
+            command: 0
+        },
+        devicePerfList: [],
+        perfHistory: {
+            screenshots: [],
+            commands: []
+        }
     },
     computed: {
         deviceUrl: function() {
@@ -1234,8 +1456,66 @@ window.app = new Vue({
 
         // 加载保存的快捷短语
         this.loadPhrases();
+
+        // 初始化设备性能列表
+        this.initDevicePerfList();
     },
     methods: {
+        // 初始化设备性能列表
+        initDevicePerfList: function() {
+            var self = this;
+            this.devicePerfList = [];
+            for (var i = 0; i < this.deviceList.length; i++) {
+                this.devicePerfList.push({
+                    udid: this.deviceList[i].udid,
+                    name: this.deviceList[i].model || this.deviceList[i].udid.split('-')[0],
+                    cmdLatency: 0,
+                    successRate: 100,
+                    totalCmds: 0,
+                    successCmds: 0
+                });
+            }
+        },
+
+        // 更新设备命令性能
+        updateDevicePerf: function(udid, latency, success) {
+            for (var i = 0; i < this.devicePerfList.length; i++) {
+                if (this.devicePerfList[i].udid === udid) {
+                    var perf = this.devicePerfList[i];
+                    perf.totalCmds++;
+                    if (success) perf.successCmds++;
+                    // 移动平均
+                    perf.cmdLatency = Math.round(perf.cmdLatency * 0.7 + latency * 0.3);
+                    perf.successRate = Math.round((perf.successCmds / perf.totalCmds) * 100);
+                    break;
+                }
+            }
+        },
+
+        // 更新截图性能
+        updateScreenshotPerf: function(latency) {
+            this.perfHistory.screenshots.push(latency);
+            if (this.perfHistory.screenshots.length > 30) {
+                this.perfHistory.screenshots.shift();
+            }
+            // 计算平均延迟
+            var sum = this.perfHistory.screenshots.reduce(function(a, b) { return a + b; }, 0);
+            this.perfStats.screenshot = Math.round(sum / this.perfHistory.screenshots.length);
+            // 计算 FPS
+            if (this.perfStats.screenshot > 0) {
+                this.perfStats.fps = Math.min(60, Math.round(1000 / this.perfStats.screenshot));
+            }
+        },
+
+        // 更新命令性能
+        updateCommandPerf: function(latency) {
+            this.perfHistory.commands.push(latency);
+            if (this.perfHistory.commands.length > 30) {
+                this.perfHistory.commands.shift();
+            }
+            var sum = this.perfHistory.commands.reduce(function(a, b) { return a + b; }, 0);
+            this.perfStats.command = Math.round(sum / this.perfHistory.commands.length);
+        },
         // 获取目标设备列表
         getTargetDevices: function() {
             if (this.targetMode === 'all') {
@@ -1681,6 +1961,8 @@ window.app = new Vue({
                         // 立即请求下一帧
                         if (running) {
                             var fetchTime = performance.now() - fetchStart;
+                            // 更新截图性能统计
+                            self.updateScreenshotPerf(Math.round(fetchTime));
                             var nextDelay = Math.max(1, adaptiveDelay - fetchTime);
                             setTimeout(fetchScreenshot, nextDelay);
                         }
@@ -1719,26 +2001,36 @@ window.app = new Vue({
                 sendToTargetDevices: function(action, params) {
                     var targets = self.getTargetDevices();
                     var payload = JSON.stringify(Object.assign({ action: action }, params));
+                    var cmdStart = performance.now();
                     console.log('[TOUCH] Sending to', targets.length, 'device(s):', action, params);
 
                     // 并行发送到目标设备
                     for (var i = 0; i < targets.length; i++) {
-                        var udid = targets[i].udid;
-                        var url = '/inspector/' + udid + '/touch';
+                        (function(udid) {
+                            var url = '/inspector/' + udid + '/touch';
+                            var deviceCmdStart = performance.now();
 
-                        // 使用 fetch (非阻塞)
-                        fetch(url, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: payload,
-                            keepalive: true
-                        })
-                        .then(function(res) {
-                            console.log('[TOUCH] Response from', udid, ':', res.status);
-                        })
-                        .catch(function(err) {
-                            console.error('[TOUCH] Error sending to', udid, ':', err);
-                        });
+                            // 使用 fetch (非阻塞)
+                            fetch(url, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: payload,
+                                keepalive: true
+                            })
+                            .then(function(res) {
+                                var latency = Math.round(performance.now() - deviceCmdStart);
+                                console.log('[TOUCH] Response from', udid, ':', res.status, '(' + latency + 'ms)');
+                                // 更新设备性能统计
+                                self.updateDevicePerf(udid, latency, res.ok);
+                                // 更新总体命令延迟
+                                self.updateCommandPerf(latency);
+                            })
+                            .catch(function(err) {
+                                var latency = Math.round(performance.now() - deviceCmdStart);
+                                console.error('[TOUCH] Error sending to', udid, ':', err);
+                                self.updateDevicePerf(udid, latency, false);
+                            });
+                        })(targets[i].udid);
                     }
                 },
 
