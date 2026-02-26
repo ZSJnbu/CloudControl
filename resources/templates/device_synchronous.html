@@ -1109,9 +1109,19 @@
                         </svg>
                         PERFORMANCE
                     </div>
-                    <span style="font-size: 0.65rem; color: var(--term-text-dim);">
-                        FPS: <span style="color: var(--term-cyan);">{{ perfStats.fps }}</span>
-                    </span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <!-- 画质选择 -->
+                        <select v-model="streamQuality" @change="applyQualitySettings"
+                            style="background: var(--term-bg); color: var(--term-green); border: 1px solid var(--term-border);
+                                   padding: 2px 6px; font-size: 0.65rem; border-radius: 3px; cursor: pointer;">
+                            <option value="performance">流畅</option>
+                            <option value="standard">标准</option>
+                            <option value="hd">高清</option>
+                        </select>
+                        <span style="font-size: 0.65rem; color: var(--term-text-dim);">
+                            FPS: <span style="color: var(--term-cyan);">{{ perfStats.fps }}</span>
+                        </span>
+                    </div>
                 </div>
                 <div class="gc-perf-content">
                     <!-- 总体性能指标 -->
@@ -1382,6 +1392,13 @@ window.app = new Vue({
         phrases: [],
         newPhrase: '',
         phrasesCollapsed: false,
+        // 画质设置
+        streamQuality: 'standard',  // 'performance', 'standard', 'hd'
+        qualitySettings: {
+            performance: { q: 40, s: 0.4 },  // 流畅模式：低延迟
+            standard: { q: 60, s: 0.6 },     // 标准模式：平衡
+            hd: { q: 80, s: 0.8 }            // 高清模式：高画质
+        },
         // 性能监控
         perfStats: {
             fps: 0,
@@ -1454,6 +1471,12 @@ window.app = new Vue({
         // 更新同步延迟显示
         this.updateLatencyDisplay();
 
+        // 加载保存的画质设置
+        var savedQuality = localStorage.getItem('gc_stream_quality');
+        if (savedQuality && this.qualitySettings[savedQuality]) {
+            this.streamQuality = savedQuality;
+        }
+
         // 加载保存的快捷短语
         this.loadPhrases();
 
@@ -1461,6 +1484,18 @@ window.app = new Vue({
         this.initDevicePerfList();
     },
     methods: {
+        // 应用画质设置
+        applyQualitySettings: function() {
+            // 保存到 localStorage
+            localStorage.setItem('gc_stream_quality', this.streamQuality);
+            console.log('[QUALITY] 切换画质模式:', this.streamQuality, this.qualitySettings[this.streamQuality]);
+        },
+
+        // 获取当前画质参数
+        getQualityParams: function() {
+            return this.qualitySettings[this.streamQuality] || this.qualitySettings.standard;
+        },
+
         // 初始化设备性能列表
         initDevicePerfList: function() {
             var self = this;
@@ -1938,8 +1973,9 @@ window.app = new Vue({
                 isFetching = true;
                 var fetchStart = performance.now();
 
-                // 使用二进制图片端点 (低质量高速模式: q=50, s=0.5)
-                fetch('/inspector/' + self.deviceUdid + '/screenshot/img?q=40&s=0.4&t=' + Date.now())
+                // 使用二进制图片端点 (根据画质设置动态调整)
+                var qp = self.getQualityParams();
+                fetch('/inspector/' + self.deviceUdid + '/screenshot/img?q=' + qp.q + '&s=' + qp.s + '&t=' + Date.now())
                     .then(function(response) {
                         if (!response.ok) throw new Error('Network error');
                         return response.blob();

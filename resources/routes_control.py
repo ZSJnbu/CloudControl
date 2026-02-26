@@ -784,11 +784,11 @@ async def inspector_screenshot_img(request: web.Request):
     udid = request.match_info.get("udid", "")
     if udid != "":
         try:
-            # 获取优化参数 (默认更低质量以提高速度)
-            quality = int(request.query.get('q', 40))  # 降低到40
-            quality = max(20, min(90, quality))
-            scale = float(request.query.get('s', 0.4))  # 默认缩放40%
-            scale = max(0.2, min(1.0, scale))
+            # 获取优化参数 (平衡质量和速度)
+            quality = int(request.query.get('q', 60))  # 默认60，平衡清晰度和速度
+            quality = max(20, min(95, quality))
+            scale = float(request.query.get('s', 0.6))  # 默认缩放60%，保持可读性
+            scale = max(0.3, min(1.0, scale))
 
             import asyncio
 
@@ -839,10 +839,10 @@ async def inspector_screenshot_img(request: web.Request):
                     buffer = BytesIO()
                     img = d.screenshot()
 
-                    # 缩放以减少数据量 (使用最快的NEAREST算法)
+                    # 缩放以减少数据量
                     if scale < 1.0:
                         new_size = (int(img.width * scale), int(img.height * scale))
-                        img = img.resize(new_size, resample=0)  # NEAREST (最快)
+                        img = img.resize(new_size, resample=1)  # BILINEAR (质量与速度平衡)
 
                     # 使用更激进的压缩
                     img.convert("RGB").save(buffer, format='JPEG', quality=quality, optimize=False)
