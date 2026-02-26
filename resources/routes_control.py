@@ -49,7 +49,10 @@ DEVICE_INFO_CACHE_TTL = 300  # 5分钟缓存
 # 截图缓存 (超短TTL，减少重复请求)
 _screenshot_cache = {}
 _screenshot_cache_time = {}
-SCREENSHOT_CACHE_TTL = 0.15  # 150ms 缓存
+SCREENSHOT_CACHE_TTL = 0.30  # 300ms 缓存 (提高命中率)
+
+# 截图请求去重 (避免并发请求同一设备)
+_screenshot_pending = {}  # cache_key -> asyncio.Future
 
 def get_cached_screenshot(udid):
     """获取缓存的截图"""
@@ -782,10 +785,12 @@ async def inspector_screenshot_img(request: web.Request):
     if udid != "":
         try:
             # 获取优化参数 (默认更低质量以提高速度)
-            quality = int(request.query.get('q', 50))
+            quality = int(request.query.get('q', 40))  # 降低到40
             quality = max(20, min(90, quality))
-            scale = float(request.query.get('s', 0.5))  # 默认缩放50%
-            scale = max(0.25, min(1.0, scale))
+            scale = float(request.query.get('s', 0.4))  # 默认缩放40%
+            scale = max(0.2, min(1.0, scale))
+
+            import asyncio
 
             # 构建缓存键
             cache_key = f"{udid}_{quality}_{scale}"
@@ -799,46 +804,71 @@ async def inspector_screenshot_img(request: web.Request):
                 }
                 return web.Response(body=cached, content_type='image/jpeg', headers=headers)
 
-            # 获取设备信息 (使用缓存)
-            device = get_cached_device_info(udid)
-            if device is None:
-                device = await phone_service.query_info_by_udid(udid)
-                if device:
-                    set_cached_device_info(udid, device)
+            # 请求去重: 如果已有请求在进行中，等待其结果
+            if cache_key in _screenshot_pending:
+                try:
+                    img_data = await _screenshot_pending[cache_key]
+                    headers = {
+                        'Cache-Control': 'no-cache',
+                        'X-Cache': 'DEDUP'
+                    }
+                    return web.Response(body=img_data, content_type='image/jpeg', headers=headers)
+                except Exception:
+                    pass  # 原请求失败，继续尝试新请求
 
-            if device is None:
-                raise web.HTTPNotFound()
-
-            serial = device.get('serial')
-            d = get_cached_device(device['ip'], device['port'], serial=serial)
-
-            # 在线程池中执行截图操作
-            import asyncio
+            # 创建 Future 用于去重
             loop = asyncio.get_event_loop()
+            future = loop.create_future()
+            _screenshot_pending[cache_key] = future
 
-            def capture_screenshot():
-                buffer = BytesIO()
-                img = d.screenshot()
+            try:
+                # 获取设备信息 (使用缓存)
+                device = get_cached_device_info(udid)
+                if device is None:
+                    device = await phone_service.query_info_by_udid(udid)
+                    if device:
+                        set_cached_device_info(udid, device)
 
-                # 缩放以减少数据量
-                if scale < 1.0:
-                    new_size = (int(img.width * scale), int(img.height * scale))
-                    img = img.resize(new_size, resample=1)  # BILINEAR
+                if device is None:
+                    raise web.HTTPNotFound()
 
-                # 使用更激进的压缩
-                img.convert("RGB").save(buffer, format='JPEG', quality=quality, optimize=False)
-                return buffer.getvalue()
+                serial = device.get('serial')
+                d = get_cached_device(device['ip'], device['port'], serial=serial)
 
-            img_data = await loop.run_in_executor(None, capture_screenshot)
+                def capture_screenshot():
+                    buffer = BytesIO()
+                    img = d.screenshot()
 
-            # 缓存截图
-            set_cached_screenshot(cache_key, img_data)
+                    # 缩放以减少数据量 (使用最快的NEAREST算法)
+                    if scale < 1.0:
+                        new_size = (int(img.width * scale), int(img.height * scale))
+                        img = img.resize(new_size, resample=0)  # NEAREST (最快)
 
-            headers = {
-                'Cache-Control': 'no-cache',
-                'X-Cache': 'MISS'
-            }
-            return web.Response(body=img_data, content_type='image/jpeg', headers=headers)
+                    # 使用更激进的压缩
+                    img.convert("RGB").save(buffer, format='JPEG', quality=quality, optimize=False)
+                    return buffer.getvalue()
+
+                img_data = await loop.run_in_executor(None, capture_screenshot)
+
+                # 缓存截图
+                set_cached_screenshot(cache_key, img_data)
+
+                # 通知等待的请求
+                if not future.done():
+                    future.set_result(img_data)
+
+                headers = {
+                    'Cache-Control': 'no-cache',
+                    'X-Cache': 'MISS'
+                }
+                return web.Response(body=img_data, content_type='image/jpeg', headers=headers)
+            except Exception as e:
+                if not future.done():
+                    future.set_exception(e)
+                raise
+            finally:
+                # 清理 pending 状态
+                _screenshot_pending.pop(cache_key, None)
         except Exception as e:
             logger.error(f"截图失败: {e}")
             raise web.HTTPNotFound()
