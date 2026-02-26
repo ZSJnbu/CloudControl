@@ -455,6 +455,57 @@
             height: 18px;
         }
 
+        /* 目标选择器样式 */
+        .gc-target-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 15px;
+            background: var(--term-bg-dark);
+            border-bottom: 1px solid var(--term-border);
+        }
+
+        .gc-target-label {
+            font-family: var(--term-font);
+            font-size: 0.75rem;
+            color: var(--term-text-dim);
+        }
+
+        .gc-target-toggle {
+            display: flex;
+            gap: 4px;
+        }
+
+        .gc-target-btn {
+            padding: 4px 10px;
+            font-family: var(--term-font);
+            font-size: 0.7rem;
+            background: transparent;
+            border: 1px solid var(--term-border);
+            color: var(--term-text-dim);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .gc-target-btn:hover {
+            border-color: var(--term-green);
+            color: var(--term-green);
+        }
+
+        .gc-target-btn.active {
+            background: var(--term-green);
+            color: var(--term-black);
+            border-color: var(--term-green);
+        }
+
+        .gc-target-info {
+            flex: 1;
+            font-family: var(--term-font);
+            font-size: 0.7rem;
+            color: var(--term-cyan);
+            text-align: right;
+        }
+
         .gc-device-card.is-master {
             border-color: var(--term-green);
             box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
@@ -618,6 +669,25 @@
                 <span class="gc-finger finger-1"></span>
             </section>
 
+            <!-- 目标选择器 -->
+            <div class="gc-target-selector">
+                <span class="gc-target-label">TARGET:</span>
+                <div class="gc-target-toggle">
+                    <button class="gc-target-btn" :class="{active: targetMode === 'all'}" @click="targetMode = 'all'" title="发送到所有设备">
+                        ALL
+                    </button>
+                    <button class="gc-target-btn" :class="{active: targetMode === 'master'}" @click="targetMode = 'master'" title="仅发送到主控设备">
+                        MASTER
+                    </button>
+                    <button class="gc-target-btn" :class="{active: targetMode === 'selected'}" @click="targetMode = 'selected'" title="发送到选中的设备">
+                        SELECTED
+                    </button>
+                </div>
+                <span class="gc-target-info">
+                    {{ targetMode === 'all' ? '→ 所有设备 (' + deviceList.length + ')' : targetMode === 'master' ? '→ ' + (deviceList[masterIndex] ? deviceList[masterIndex].model || deviceList[masterIndex].udid : '') : '→ 选中设备 (' + (selectedDevice !== null ? 1 : 0) + ')' }}
+                </span>
+            </div>
+
             <div class="gc-control-bar">
                 <button class="gc-control-btn danger" @click="keyevent('power')" title="电源键">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -655,7 +725,7 @@
                        class="gc-text-input"
                        v-model="inputText"
                        @keyup.enter="sendText"
-                       placeholder="输入文本，按 Enter 发送到所有设备..."
+                       :placeholder="'输入文本，按 Enter 发送到' + (targetMode === 'all' ? '所有设备' : targetMode === 'master' ? '主控设备' : '选中设备') + '...'"
                        title="支持中文输入">
                 <button class="gc-input-btn" @click="sendText" title="发送文本">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -823,6 +893,7 @@ window.app = new Vue({
         rotation: 0,
         cursor: {},
         inputText: '',  // 文本输入框内容
+        targetMode: 'all',  // 目标模式: 'all', 'master', 'selected'
     },
     computed: {
         deviceUrl: function() {
@@ -882,6 +953,22 @@ window.app = new Vue({
         this.updateLatencyDisplay();
     },
     methods: {
+        // 获取目标设备列表
+        getTargetDevices: function() {
+            if (this.targetMode === 'all') {
+                return deviceList;
+            } else if (this.targetMode === 'master') {
+                return deviceList[this.masterIndex] ? [deviceList[this.masterIndex]] : [];
+            } else if (this.targetMode === 'selected') {
+                if (this.selectedDevice !== null && deviceList[this.selectedDevice]) {
+                    return [deviceList[this.selectedDevice]];
+                }
+                // 如果没有选中设备，使用主控设备
+                return deviceList[this.masterIndex] ? [deviceList[this.masterIndex]] : [];
+            }
+            return deviceList;
+        },
+
         getBatteryClass: function(battery) {
             if (!battery) return '';
             if (battery < 20) return 'low';
@@ -992,10 +1079,12 @@ window.app = new Vue({
 
         keyevent: function(meta) {
             var self = this;
-            // 发送按键事件到所有设备
-            for (var i = 0; i < deviceList.length; i++) {
+            var targets = this.getTargetDevices();
+            console.log('[KEYEVENT] Sending', meta, 'to', targets.length, 'device(s)');
+            // 发送按键事件到目标设备
+            for (var i = 0; i < targets.length; i++) {
                 $.ajax({
-                    url: '/inspector/' + deviceList[i].udid + '/keyevent',
+                    url: '/inspector/' + targets[i].udid + '/keyevent',
                     method: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify({ key: meta.toUpperCase() })
@@ -1004,11 +1093,12 @@ window.app = new Vue({
         },
 
         shell: function(command) {
-            // 发送shell命令到所有设备
+            // 发送shell命令到目标设备
+            var targets = this.getTargetDevices();
             var results = [];
-            for (var i = 0; i < deviceList.length; i++) {
+            for (var i = 0; i < targets.length; i++) {
                 results.push($.ajax({
-                    url: '/inspector/' + deviceList[i].udid + '/shell',
+                    url: '/inspector/' + targets[i].udid + '/shell',
                     method: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify({ command: command })
@@ -1017,16 +1107,17 @@ window.app = new Vue({
             return $.when.apply($, results);
         },
 
-        // 发送文本到所有设备
+        // 发送文本到目标设备
         sendText: function() {
             var text = this.inputText.trim();
             if (!text) return;
 
-            console.log('[INPUT] Sending text to all devices:', text);
+            var targets = this.getTargetDevices();
+            console.log('[INPUT] Sending text to', targets.length, 'device(s):', text);
 
-            // 发送到所有设备
-            for (var i = 0; i < deviceList.length; i++) {
-                fetch('/inspector/' + deviceList[i].udid + '/input', {
+            // 发送到目标设备
+            for (var i = 0; i < targets.length; i++) {
+                fetch('/inspector/' + targets[i].udid + '/input', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text: text })
@@ -1246,13 +1337,14 @@ window.app = new Vue({
                 batchDelay: 8, // 8ms 批处理窗口
 
                 // 使用 fetch + keepalive 发送命令 (不阻塞)
-                sendToAllDevices: function(action, params) {
+                sendToTargetDevices: function(action, params) {
+                    var targets = self.getTargetDevices();
                     var payload = JSON.stringify(Object.assign({ action: action }, params));
-                    console.log('[TOUCH] Sending to all devices:', action, params);
+                    console.log('[TOUCH] Sending to', targets.length, 'device(s):', action, params);
 
-                    // 并行发送到所有设备
-                    for (var i = 0; i < deviceList.length; i++) {
-                        var udid = deviceList[i].udid;
+                    // 并行发送到目标设备
+                    for (var i = 0; i < targets.length; i++) {
+                        var udid = targets[i].udid;
                         var url = '/inspector/' + udid + '/touch';
 
                         // 使用 fetch (非阻塞)
@@ -1273,12 +1365,12 @@ window.app = new Vue({
 
                 // 立即发送点击 (最低延迟)
                 sendClickImmediate: function(x, y) {
-                    this.sendToAllDevices('click', { x: x, y: y });
+                    this.sendToTargetDevices('click', { x: x, y: y });
                 },
 
                 // 批量发送滑动轨迹
                 sendSwipeImmediate: function(x1, y1, x2, y2, duration) {
-                    this.sendToAllDevices('swipe', {
+                    this.sendToTargetDevices('swipe', {
                         x: x1, y: y1,
                         x2: x2, y2: y2,
                         duration: duration || 200
@@ -1511,13 +1603,13 @@ window.app = new Vue({
                 var toYP = fromYP + (event.wheelDeltaY < 0 ? -0.1 : 0.1);
                 toYP = Math.max(0.1, Math.min(0.9, toYP));
 
-                // 发送滑动命令到所有设备
+                // 发送滑动命令到目标设备
                 var canvas = self.canvas.bg;
                 var x1 = Math.floor((wheelStartX / screen.bounds.w) * canvas.width);
                 var y1 = Math.floor(fromYP * canvas.height);
                 var y2 = Math.floor(toYP * canvas.height);
 
-                control.sendToAllDevices('swipe', { x: x1, y: y1, x2: x1, y2: y2 });
+                control.sendToTargetDevices('swipe', { x: x1, y: y1, x2: x1, y2: y2 });
 
                 fromYP = toYP;
                 mouseWheelDelayTouchUp();
