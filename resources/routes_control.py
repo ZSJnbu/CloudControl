@@ -46,6 +46,29 @@ _device_info_cache = {}
 _device_info_cache_time = {}
 DEVICE_INFO_CACHE_TTL = 300  # 5分钟缓存
 
+# 截图缓存 (超短TTL，减少重复请求)
+_screenshot_cache = {}
+_screenshot_cache_time = {}
+SCREENSHOT_CACHE_TTL = 0.15  # 150ms 缓存
+
+def get_cached_screenshot(udid):
+    """获取缓存的截图"""
+    now = time.time()
+    if udid in _screenshot_cache:
+        if now - _screenshot_cache_time.get(udid, 0) < SCREENSHOT_CACHE_TTL:
+            return _screenshot_cache[udid]
+    return None
+
+def set_cached_screenshot(udid, data):
+    """设置截图缓存"""
+    _screenshot_cache[udid] = data
+    _screenshot_cache_time[udid] = time.time()
+    # 清理旧缓存 (最多保留20个)
+    if len(_screenshot_cache) > 20:
+        oldest = min(_screenshot_cache_time, key=_screenshot_cache_time.get)
+        del _screenshot_cache[oldest]
+        del _screenshot_cache_time[oldest]
+
 def get_cached_device_info(udid):
     """获取缓存的设备信息，避免频繁数据库查询"""
     now = time.time()
@@ -749,41 +772,73 @@ async def inspector_upload(request: web.Request):
 @route.get("/inspector/{udid}/screenshot/img")
 async def inspector_screenshot_img(request: web.Request):
     """
-    直接返回截图图片（优化版：支持质量和缩放参数）
-    :param request:
-    :return:
+    直接返回截图图片 - 高性能优化版
+    - 截图缓存 (150ms TTL)
+    - 设备信息缓存
+    - 线程池执行
+    - 默认低质量高压缩
     """
     udid = request.match_info.get("udid", "")
     if udid != "":
         try:
-            device = await phone_service.query_info_by_udid(udid)
-            # 使用缓存的设备连接
-            serial = device.get('serial') if device else None
-            d = get_cached_device(device['ip'], device['port'], serial=serial)
-
-            # 获取优化参数
-            quality = int(request.query.get('q', 70))
-            quality = max(30, min(95, quality))
-            scale = float(request.query.get('s', 1.0))
+            # 获取优化参数 (默认更低质量以提高速度)
+            quality = int(request.query.get('q', 50))
+            quality = max(20, min(90, quality))
+            scale = float(request.query.get('s', 0.5))  # 默认缩放50%
             scale = max(0.25, min(1.0, scale))
 
-            buffer = BytesIO()
-            img = d.screenshot()
+            # 构建缓存键
+            cache_key = f"{udid}_{quality}_{scale}"
 
-            # 可选缩放
-            if scale < 1.0:
-                new_size = (int(img.width * scale), int(img.height * scale))
-                img = img.resize(new_size, resample=1)
+            # 检查截图缓存
+            cached = get_cached_screenshot(cache_key)
+            if cached:
+                headers = {
+                    'Cache-Control': 'no-cache',
+                    'X-Cache': 'HIT'
+                }
+                return web.Response(body=cached, content_type='image/jpeg', headers=headers)
 
-            img.convert("RGB").save(buffer, format='JPEG', quality=quality, optimize=True)
+            # 获取设备信息 (使用缓存)
+            device = get_cached_device_info(udid)
+            if device is None:
+                device = await phone_service.query_info_by_udid(udid)
+                if device:
+                    set_cached_device_info(udid, device)
 
-            # 添加缓存控制头
+            if device is None:
+                raise web.HTTPNotFound()
+
+            serial = device.get('serial')
+            d = get_cached_device(device['ip'], device['port'], serial=serial)
+
+            # 在线程池中执行截图操作
+            import asyncio
+            loop = asyncio.get_event_loop()
+
+            def capture_screenshot():
+                buffer = BytesIO()
+                img = d.screenshot()
+
+                # 缩放以减少数据量
+                if scale < 1.0:
+                    new_size = (int(img.width * scale), int(img.height * scale))
+                    img = img.resize(new_size, resample=1)  # BILINEAR
+
+                # 使用更激进的压缩
+                img.convert("RGB").save(buffer, format='JPEG', quality=quality, optimize=False)
+                return buffer.getvalue()
+
+            img_data = await loop.run_in_executor(None, capture_screenshot)
+
+            # 缓存截图
+            set_cached_screenshot(cache_key, img_data)
+
             headers = {
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
+                'Cache-Control': 'no-cache',
+                'X-Cache': 'MISS'
             }
-            return web.Response(body=buffer.getvalue(), content_type='image/jpeg', headers=headers)
+            return web.Response(body=img_data, content_type='image/jpeg', headers=headers)
         except Exception as e:
             logger.error(f"截图失败: {e}")
             raise web.HTTPNotFound()

@@ -1655,8 +1655,8 @@ window.app = new Vue({
                 isFetching = true;
                 var fetchStart = performance.now();
 
-                // 使用二进制图片端点 (比 base64 JSON 快约 30%)
-                fetch('/inspector/' + self.deviceUdid + '/screenshot/img?q=70&t=' + Date.now())
+                // 使用二进制图片端点 (低质量高速模式: q=50, s=0.5)
+                fetch('/inspector/' + self.deviceUdid + '/screenshot/img?q=50&s=0.5&t=' + Date.now())
                     .then(function(response) {
                         if (!response.ok) throw new Error('Network error');
                         return response.blob();
