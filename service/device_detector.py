@@ -26,10 +26,12 @@ def detect_device_type(serial: str) -> str:
     """根据序列号检测设备类型"""
     if not serial:
         return DEVICE_TYPE_USB
-    if re.match(r'^\d+\.\d+\.\d+\.\d+:\d+$', serial):
-        return DEVICE_TYPE_WIFI
+    # 先检查模拟器 (emulator- 或 127.0.0.1:)
     if serial.startswith('emulator-') or serial.startswith('127.0.0.1:'):
         return DEVICE_TYPE_EMULATOR
+    # 再检查 WiFi 设备 (IP:Port 格式)
+    if re.match(r'^\d+\.\d+\.\d+\.\d+:\d+$', serial):
+        return DEVICE_TYPE_WIFI
     return DEVICE_TYPE_USB
 
 
