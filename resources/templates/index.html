@@ -615,7 +615,8 @@
           }, 1000);
         },
         getScreenshotUrl: function(device) {
-          return 'http://' + device.ip + ':7912/screenshot?t=' + Date.now();
+          // 使用后端代理 API (设备内部 IP 无法从浏览器直接访问)
+          return '/inspector/' + device.udid + '/screenshot/img?t=' + Date.now();
         },
         onImgError: function(e) {
           e.target.style.display = 'none';
