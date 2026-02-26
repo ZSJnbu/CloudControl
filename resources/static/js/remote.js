@@ -114,6 +114,20 @@ window.app = new Vue({
       activity: '',
       pid: '',
     },
+    // 性能监控
+    perfStats: {
+      fps: 0,
+      screenshot: 0,
+      command: 0
+    },
+    perfHistory: {
+      screenshots: [],
+      commands: []
+    },
+    // 快捷短语
+    phrases: [],
+    newPhrase: '',
+    phrasesCollapsed: false,
 
   },
   watch: {
@@ -242,6 +256,9 @@ window.app = new Vue({
 
     // 启用键盘输入
     this.enableKeyboardInput()
+
+    // 加载快捷短语
+    this.loadPhrases()
   },
   methods: {
     // NIO WebSocket 模式 - 更快的通信
@@ -471,6 +488,7 @@ window.app = new Vue({
         return;
       }
 
+      var startTime = Date.now();
       console.log('Sending to:', '/inspector/' + self.deviceUdid + '/input');
       $.ajax({
         url: '/inspector/' + self.deviceUdid + '/input',
@@ -478,6 +496,7 @@ window.app = new Vue({
         contentType: 'application/json',
         data: JSON.stringify({ text: text })
       }).done(function(response) {
+        self.updateCommandLatency(Date.now() - startTime);
         console.log('输入成功:', response);
         self.inputText = '';  // 清空输入框
       }).fail(function(err) {
@@ -1659,6 +1678,7 @@ window.app = new Vue({
 
         fetching = true;
         pendingFetch = false;
+        var fetchStartTime = Date.now();
 
         $.getJSON('/inspector/' + self.deviceUdid + '/screenshot')
           .done(function(ret) {
@@ -1666,6 +1686,9 @@ window.app = new Vue({
               fetching = false;
               return;
             }
+
+            // 记录截图延迟
+            self.updateScreenshotLatency(Date.now() - fetchStartTime);
 
             var back = buffers[backBuffer];
             var blob = b64toBlob(ret.data, 'image/' + ret.type);
@@ -1815,6 +1838,7 @@ window.app = new Vue({
 
           console.log("touchUp: canvas=", canvas.width, canvas.height, "pos=", x, y);
 
+          var cmdStartTime = Date.now();
           // 判断是点击还是滑动
           if (touchStart.endXP !== undefined &&
               (Math.abs(touchStart.endXP - touchStart.xP) > 0.02 ||
@@ -1828,6 +1852,8 @@ window.app = new Vue({
               method: 'POST',
               contentType: 'application/json',
               data: JSON.stringify({ action: 'swipe', x: x, y: y, x2: x2, y2: y2 })
+            }).always(function() {
+              self.updateCommandLatency(Date.now() - cmdStartTime);
             });
           } else {
             // 点击
@@ -1837,6 +1863,8 @@ window.app = new Vue({
               method: 'POST',
               contentType: 'application/json',
               data: JSON.stringify({ action: 'click', x: x, y: y })
+            }).always(function() {
+              self.updateCommandLatency(Date.now() - cmdStartTime);
             });
           }
           touchStart = null;
@@ -2093,6 +2121,86 @@ window.app = new Vue({
 
         }
       })
+    },
+
+    // ===== 性能监控功能 =====
+    updateScreenshotLatency: function(latency) {
+      this.perfHistory.screenshots.push(latency);
+      if (this.perfHistory.screenshots.length > 10) {
+        this.perfHistory.screenshots.shift();
+      }
+      var sum = this.perfHistory.screenshots.reduce(function(a, b) { return a + b; }, 0);
+      this.perfStats.screenshot = Math.round(sum / this.perfHistory.screenshots.length);
+      if (this.perfStats.screenshot > 0) {
+        this.perfStats.fps = Math.min(60, Math.round(1000 / this.perfStats.screenshot));
+      }
+    },
+
+    updateCommandLatency: function(latency) {
+      this.perfHistory.commands.push(latency);
+      if (this.perfHistory.commands.length > 10) {
+        this.perfHistory.commands.shift();
+      }
+      var sum = this.perfHistory.commands.reduce(function(a, b) { return a + b; }, 0);
+      this.perfStats.command = Math.round(sum / this.perfHistory.commands.length);
+    },
+
+    // ===== 快捷短语功能 =====
+    loadPhrases: function() {
+      try {
+        var saved = localStorage.getItem('cloudcontrol_phrases');
+        if (saved) {
+          this.phrases = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.log('加载快捷短语失败:', e);
+      }
+    },
+
+    savePhrases: function() {
+      try {
+        localStorage.setItem('cloudcontrol_phrases', JSON.stringify(this.phrases));
+      } catch (e) {
+        console.log('保存快捷短语失败:', e);
+      }
+    },
+
+    addPhrase: function() {
+      var text = this.newPhrase.trim();
+      if (!text) return;
+      if (this.phrases.indexOf(text) === -1) {
+        this.phrases.unshift(text);
+        this.savePhrases();
+      }
+      this.newPhrase = '';
+    },
+
+    deletePhrase: function(index) {
+      this.phrases.splice(index, 1);
+      this.savePhrases();
+    },
+
+    sendPhrase: function(phrase) {
+      var self = this;
+      var startTime = Date.now();
+      $.ajax({
+        url: '/inspector/' + self.deviceUdid + '/input',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ text: phrase })
+      }).done(function(response) {
+        self.updateCommandLatency(Date.now() - startTime);
+        console.log('短语发送成功:', phrase);
+      }).fail(function(err) {
+        console.log('短语发送失败:', err);
+      });
+    },
+
+    clearAllPhrases: function() {
+      if (confirm('确定要清空所有快捷短语吗？')) {
+        this.phrases = [];
+        this.savePhrases();
+      }
     }
   }
 })

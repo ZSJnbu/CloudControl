@@ -512,6 +512,196 @@
      }
     }
 
+    /* ===== 性能监控面板 ===== */
+    .term-perf-panel {
+      padding: 8px 12px;
+      background: var(--term-bg-dark);
+      border-bottom: 1px solid var(--term-border);
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      font-family: var(--term-font);
+      font-size: 0.75rem;
+    }
+
+    .term-perf-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .term-perf-label {
+      color: var(--term-text-dim);
+    }
+
+    .term-perf-value {
+      color: var(--term-cyan);
+      font-weight: bold;
+    }
+
+    .term-perf-value.warning {
+      color: var(--term-yellow);
+    }
+
+    .term-perf-value.error {
+      color: var(--term-red);
+    }
+
+    /* ===== 快捷短语面板 ===== */
+    .term-phrases-panel {
+      background: var(--term-bg-dark);
+      border-top: 1px solid var(--term-border);
+      max-height: 200px;
+      overflow: hidden;
+      transition: max-height 0.3s;
+    }
+
+    .term-phrases-panel.collapsed {
+      max-height: 36px;
+    }
+
+    .term-phrases-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    .term-phrases-title {
+      font-family: var(--term-font);
+      font-size: 0.75rem;
+      color: var(--term-green);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .term-phrases-toggle {
+      background: none;
+      border: none;
+      color: var(--term-text-dim);
+      cursor: pointer;
+      padding: 2px;
+    }
+
+    .term-phrases-toggle:hover {
+      color: var(--term-green);
+    }
+
+    .term-phrases-content {
+      padding: 0 12px 8px;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+
+    .term-phrases-panel.collapsed .term-phrases-content {
+      display: none;
+    }
+
+    .term-phrases-input {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .term-phrases-input input {
+      flex: 1;
+      background: var(--term-bg);
+      border: 1px solid var(--term-border);
+      color: var(--term-green);
+      padding: 6px 10px;
+      font-family: var(--term-font);
+      font-size: 0.8rem;
+    }
+
+    .term-phrases-input input:focus {
+      outline: none;
+      border-color: var(--term-green);
+    }
+
+    .term-phrases-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .term-phrase-item {
+      display: flex;
+      align-items: center;
+      background: var(--term-bg);
+      border: 1px solid var(--term-border);
+      padding: 4px 8px;
+      font-family: var(--term-font);
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .term-phrase-item:hover {
+      border-color: var(--term-green);
+      color: var(--term-green);
+    }
+
+    .term-phrase-text {
+      color: var(--term-text);
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .term-phrase-item:hover .term-phrase-text {
+      color: var(--term-green);
+    }
+
+    .term-phrase-delete {
+      margin-left: 6px;
+      color: var(--term-text-dim);
+      cursor: pointer;
+      padding: 0 2px;
+    }
+
+    .term-phrase-delete:hover {
+      color: var(--term-red);
+    }
+
+    .term-phrases-empty {
+      color: var(--term-text-dim);
+      font-size: 0.75rem;
+      text-align: center;
+      padding: 8px 0;
+    }
+
+    .term-phrases-footer {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 12px;
+      border-top: 1px solid var(--term-border);
+      font-size: 0.7rem;
+    }
+
+    .term-phrases-panel.collapsed .term-phrases-footer {
+      display: none;
+    }
+
+    .term-phrases-count {
+      color: var(--term-text-dim);
+    }
+
+    .term-phrases-clear {
+      background: none;
+      border: none;
+      color: var(--term-text-dim);
+      cursor: pointer;
+      font-size: 0.7rem;
+      font-family: var(--term-font);
+    }
+
+    .term-phrases-clear:hover {
+      color: var(--term-red);
+    }
+
     /* JSTree Terminal Theme */
     .jstree-default .jstree-node,
     .jstree-default .jstree-icon {
@@ -587,6 +777,22 @@
           </button>
         </div>
 
+        <!-- 性能监控面板 -->
+        <div class="term-perf-panel">
+          <div class="term-perf-item">
+            <span class="term-perf-label">FPS:</span>
+            <span class="term-perf-value">[[perfStats.fps]]</span>
+          </div>
+          <div class="term-perf-item">
+            <span class="term-perf-label">截图:</span>
+            <span class="term-perf-value" :class="{'warning': perfStats.screenshot > 200, 'error': perfStats.screenshot > 500}">[[perfStats.screenshot]]ms</span>
+          </div>
+          <div class="term-perf-item">
+            <span class="term-perf-label">命令:</span>
+            <span class="term-perf-value" :class="{'warning': perfStats.command > 50, 'error': perfStats.command > 100}">[[perfStats.command]]ms</span>
+          </div>
+        </div>
+
         <section class="term-screen-container" id="screen">
           <div style="position: relative; display: inline-block;">
             <canvas id="bgCanvas" class="term-screen-canvas" :style="canvasStyle"></canvas>
@@ -656,6 +862,45 @@
               UPLOAD
             </button>
             <span v-if="uploadStatus" style="font-size: 0.8rem; color: var(--term-text-dim);">[[uploadStatus]]</span>
+          </div>
+        </div>
+
+        <!-- 快捷短语面板 -->
+        <div class="term-phrases-panel" :class="{collapsed: phrasesCollapsed}">
+          <div class="term-phrases-header" @click="phrasesCollapsed = !phrasesCollapsed">
+            <div class="term-phrases-title">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              <span>快捷短语</span>
+            </div>
+            <button class="term-phrases-toggle" @click.stop="phrasesCollapsed = !phrasesCollapsed">
+              <svg v-if="phrasesCollapsed" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+              <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="18 15 12 9 6 15"/>
+              </svg>
+            </button>
+          </div>
+          <div class="term-phrases-content">
+            <div class="term-phrases-input">
+              <input type="text" v-model="newPhrase" @keydown.enter="addPhrase" placeholder="输入短语后回车添加...">
+              <button class="term-btn term-btn-ghost" @click="addPhrase" style="padding: 4px 8px;">+</button>
+            </div>
+            <div class="term-phrases-list" v-if="phrases.length > 0">
+              <div v-for="(phrase, index) in phrases" :key="index" class="term-phrase-item" @click="sendPhrase(phrase)">
+                <span class="term-phrase-text" :title="phrase">[[phrase]]</span>
+                <span class="term-phrase-delete" @click.stop="deletePhrase(index)" title="删除">×</span>
+              </div>
+            </div>
+            <div v-else class="term-phrases-empty">
+              暂无快捷短语，输入后回车添加
+            </div>
+          </div>
+          <div class="term-phrases-footer">
+            <span class="term-phrases-count">[[ phrases.length ]] 条短语</span>
+            <button class="term-phrases-clear" @click="clearAllPhrases" v-if="phrases.length > 0">清空全部</button>
           </div>
         </div>
       </div>
