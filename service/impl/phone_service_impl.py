@@ -19,7 +19,7 @@ from service.phone_service import PhoneService
 class PhoneServiceImpl(PhoneService):
 
     def __init__(self):
-        from database.motor_helper import motor
+        from database.sqlite_helper import motor
         self.motor = motor
 
     async def on_connected(self, identifier, host):
