@@ -41,6 +41,24 @@ minitouchs = []
 _device_cache = {}
 _device_cache_time = {}
 
+# 设备信息缓存 (避免每次都查数据库)
+_device_info_cache = {}
+_device_info_cache_time = {}
+DEVICE_INFO_CACHE_TTL = 300  # 5分钟缓存
+
+def get_cached_device_info(udid):
+    """获取缓存的设备信息，避免频繁数据库查询"""
+    now = time.time()
+    if udid in _device_info_cache:
+        if now - _device_info_cache_time.get(udid, 0) < DEVICE_INFO_CACHE_TTL:
+            return _device_info_cache[udid]
+    return None
+
+def set_cached_device_info(udid, info):
+    """设置设备信息缓存"""
+    _device_info_cache[udid] = info
+    _device_info_cache_time[udid] = time.time()
+
 def get_cached_device(ip, port, serial=None):
     """获取缓存的设备连接，60秒过期"""
     # 优先使用 serial 作为缓存键
@@ -473,8 +491,8 @@ async def inspector_screenshot(request: web.Request):
 @route.post("/inspector/{udid}/touch")
 async def inspector_touch(request: web.Request):
     """
-    触摸操作（使用缓存的设备连接提升速度）
-    支持模拟设备用于压力测试
+    触摸操作 - 优化版 (火速响应)
+    使用缓存避免数据库查询，使用fire-and-forget模式
     """
     udid = request.match_info.get("udid", "")
     if udid != "":
@@ -483,43 +501,49 @@ async def inspector_touch(request: web.Request):
             action = data.get("action", "click")
             x = data.get("x")
             y = data.get("y")
-            logger.info(f"[TOUCH] {udid}: action={action}, x={x}, y={y}")
 
             # 验证坐标
             if x is None or y is None:
                 return web.json_response({"status": "error", "message": "Missing coordinates"}, status=400)
 
-            device = await phone_service.query_info_by_udid(udid)
+            # 尝试从缓存获取设备信息
+            device = get_cached_device_info(udid)
+            if device is None:
+                device = await phone_service.query_info_by_udid(udid)
+                if device:
+                    set_cached_device_info(udid, device)
 
             # 检查设备是否存在
             if device is None:
                 return web.json_response({"status": "error", "message": "Device not found"}, status=404)
 
-            # 检查是否是模拟设备（用于压力测试）
+            # 检查是否是模拟设备
             if device.get('is_mock', False):
-                # 模拟成功响应
                 return web.json_response({"status": "ok"})
 
-            # 真实设备：使用缓存的设备连接
+            # 获取缓存的设备连接
             serial = device.get('serial')
             d = get_cached_device(device['ip'], device['port'], serial=serial)
 
-            # 在线程池中执行触控操作 (非阻塞)
+            # Fire-and-forget: 在后台执行，立即返回响应
             import asyncio
             loop = asyncio.get_event_loop()
 
-            if action == "click":
-                await loop.run_in_executor(None, lambda: d.device.click(int(x), int(y)))
-            elif action == "swipe":
-                x2 = data.get("x2", x)
-                y2 = data.get("y2", y)
-                # 使用前端传来的duration，默认200ms
-                duration = data.get("duration", 200) / 1000.0  # 转换为秒
-                duration = max(0.05, min(2.0, duration))  # 限制在50ms-2s
-                await loop.run_in_executor(
-                    None,
-                    lambda: d.device.swipe(int(x), int(y), int(x2), int(y2), duration=duration)
-                )
+            def execute_touch():
+                try:
+                    if action == "click":
+                        d.device.click(int(x), int(y))
+                    elif action == "swipe":
+                        x2 = data.get("x2", x)
+                        y2 = data.get("y2", y)
+                        duration = data.get("duration", 200) / 1000.0
+                        duration = max(0.05, min(2.0, duration))
+                        d.device.swipe(int(x), int(y), int(x2), int(y2), duration=duration)
+                except Exception as e:
+                    logger.error(f"[TOUCH] 执行失败 {udid}: {e}")
+
+            # 不等待完成，立即返回
+            loop.run_in_executor(None, execute_touch)
 
             return web.json_response({"status": "ok"})
         except Exception as e:
@@ -532,7 +556,7 @@ async def inspector_touch(request: web.Request):
 @route.post("/inspector/{udid}/input")
 async def inspector_input(request: web.Request):
     """
-    键盘输入文字（支持中文）
+    键盘输入文字 - 优化版 (支持中文, fire-and-forget)
     """
     udid = request.match_info.get("udid", "")
     if udid != "":
@@ -540,14 +564,34 @@ async def inspector_input(request: web.Request):
             data = await request.json()
             text = data.get("text", "")
 
-            device = await phone_service.query_info_by_udid(udid)
-            serial = device.get('serial') if device else None
+            if not text:
+                return web.json_response({"status": "ok"})
+
+            # 尝试从缓存获取设备信息
+            device = get_cached_device_info(udid)
+            if device is None:
+                device = await phone_service.query_info_by_udid(udid)
+                if device:
+                    set_cached_device_info(udid, device)
+
+            if device is None:
+                return web.json_response({"status": "error", "message": "Device not found"}, status=404)
+
+            serial = device.get('serial')
             d = get_cached_device(device['ip'], device['port'], serial=serial)
 
-            if text:
-                # 启用快速输入模式以支持中文
-                d.device.set_fastinput_ime(True)
-                d.device.send_keys(text, clear=False)
+            # Fire-and-forget
+            import asyncio
+            loop = asyncio.get_event_loop()
+
+            def execute_input():
+                try:
+                    d.device.set_fastinput_ime(True)
+                    d.device.send_keys(text, clear=False)
+                except Exception as e:
+                    logger.error(f"[INPUT] 执行失败 {udid}: {e}")
+
+            loop.run_in_executor(None, execute_input)
 
             return web.json_response({"status": "ok"})
         except Exception as e:
@@ -560,7 +604,7 @@ async def inspector_input(request: web.Request):
 @route.post("/inspector/{udid}/keyevent")
 async def inspector_keyevent(request: web.Request):
     """
-    发送按键事件 (如 Enter, Backspace, Home 等)
+    发送按键事件 - 优化版 (fire-and-forget)
     """
     udid = request.match_info.get("udid", "")
     if udid != "":
@@ -568,8 +612,17 @@ async def inspector_keyevent(request: web.Request):
             data = await request.json()
             key = data.get("key", "")
 
-            device = await phone_service.query_info_by_udid(udid)
-            serial = device.get('serial') if device else None
+            # 尝试从缓存获取设备信息
+            device = get_cached_device_info(udid)
+            if device is None:
+                device = await phone_service.query_info_by_udid(udid)
+                if device:
+                    set_cached_device_info(udid, device)
+
+            if device is None:
+                return web.json_response({"status": "error", "message": "Device not found"}, status=404)
+
+            serial = device.get('serial')
             d = get_cached_device(device['ip'], device['port'], serial=serial)
 
             # Android keycode 映射 (支持大小写)
@@ -577,9 +630,12 @@ async def inspector_keyevent(request: web.Request):
                 "Enter": "enter",
                 "Backspace": "del",
                 "Delete": "forward_del",
+                "DEL": "del",
                 "Home": "home",
+                "HOME": "home",
                 "home": "home",
                 "Back": "back",
+                "BACK": "back",
                 "back": "back",
                 "Tab": "tab",
                 "Escape": "back",
@@ -588,16 +644,28 @@ async def inspector_keyevent(request: web.Request):
                 "ArrowLeft": "dpad_left",
                 "ArrowRight": "dpad_right",
                 "Menu": "menu",
+                "MENU": "menu",
                 "menu": "menu",
                 "Power": "power",
+                "POWER": "power",
                 "power": "power",
                 "WAKEUP": "wakeup",
                 "wakeup": "wakeup",
             }
 
             android_key = key_map.get(key, key.lower())
-            logger.info(f"按键事件: {key} -> {android_key}")
-            d.device.press(android_key)
+
+            # Fire-and-forget
+            import asyncio
+            loop = asyncio.get_event_loop()
+
+            def execute_keyevent():
+                try:
+                    d.device.press(android_key)
+                except Exception as e:
+                    logger.error(f"[KEYEVENT] 执行失败 {udid}: {e}")
+
+            loop.run_in_executor(None, execute_keyevent)
 
             return web.json_response({"status": "ok"})
         except Exception as e:
