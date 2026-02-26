@@ -1189,7 +1189,10 @@ window.app = new Vue({
                 remote: "/devices/" + deviceList[i]["udid"] + "/remote",
                 status: 'online',
                 battery: Math.floor(Math.random() * 40) + 60,
-                model: deviceList[i]["model"] || ''
+                model: deviceList[i]["model"] || '',
+                // 保存实际设备分辨率 (用于坐标映射)
+                width: deviceList[i]["width"] || 1080,
+                height: deviceList[i]["height"] || 1920
             });
         }
 
@@ -1783,21 +1786,12 @@ window.app = new Vue({
                         return;
                     }
 
-                    var canvas = self.canvas.bg;
+                    // 获取设备实际分辨率 (从 self.deviceList，包含真实分辨率)
+                    var masterDevice = self.deviceList[self.masterIndex] || self.deviceList[0];
 
-                    // 获取设备实际分辨率 (从 deviceList)
-                    var masterDevice = deviceList[self.masterIndex] || deviceList[0];
-                    var deviceWidth = masterDevice ? masterDevice.width : canvas.width;
-                    var deviceHeight = masterDevice ? masterDevice.height : canvas.height;
-
-                    // 如果 canvas 尺寸无效，使用设备尺寸
-                    if (!canvas.width || canvas.width < 100) {
-                        deviceWidth = masterDevice ? masterDevice.width : 1080;
-                        deviceHeight = masterDevice ? masterDevice.height : 1920;
-                    } else {
-                        deviceWidth = canvas.width;
-                        deviceHeight = canvas.height;
-                    }
+                    // 使用设备实际分辨率，不是缩放后的 canvas 尺寸
+                    var deviceWidth = masterDevice ? masterDevice.width : 1080;
+                    var deviceHeight = masterDevice ? masterDevice.height : 1920;
 
                     var startX = Math.floor(this.touchStart.xP * deviceWidth);
                     var startY = Math.floor(this.touchStart.yP * deviceHeight);
