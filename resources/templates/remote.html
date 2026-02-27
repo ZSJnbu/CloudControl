@@ -636,10 +636,34 @@
       font-size: 0.75rem;
       cursor: pointer;
       transition: all 0.2s;
+      position: relative;
     }
 
     .term-phrase-item:hover {
       border-color: var(--term-green);
+      color: var(--term-green);
+      box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+    }
+
+    .term-phrase-item:active {
+      background: var(--term-green);
+      color: var(--term-black);
+      transform: scale(0.95);
+    }
+
+    .term-phrase-item:active .term-phrase-text {
+      color: var(--term-black);
+    }
+
+    .term-phrase-send {
+      margin-right: 6px;
+      color: var(--term-text-dim);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .term-phrase-item:hover .term-phrase-send {
+      opacity: 1;
       color: var(--term-green);
     }
 
@@ -649,6 +673,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      flex: 1;
     }
 
     .term-phrase-item:hover .term-phrase-text {
@@ -660,6 +685,12 @@
       color: var(--term-text-dim);
       cursor: pointer;
       padding: 0 2px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .term-phrase-item:hover .term-phrase-delete {
+      opacity: 1;
     }
 
     .term-phrase-delete:hover {
@@ -889,8 +920,11 @@
               <button class="term-btn term-btn-ghost" @click="addPhrase" style="padding: 4px 8px;">+</button>
             </div>
             <div class="term-phrases-list" v-if="phrases.length > 0">
-              <div v-for="(phrase, index) in phrases" :key="index" class="term-phrase-item" @click="sendPhrase(phrase)">
-                <span class="term-phrase-text" :title="phrase">[[phrase]]</span>
+              <div v-for="(phrase, index) in phrases" :key="index" class="term-phrase-item" @click="sendPhrase(phrase)" title="点击发送">
+                <svg class="term-phrase-send" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+                <span class="term-phrase-text">[[phrase]]</span>
                 <span class="term-phrase-delete" @click.stop="deletePhrase(index)" title="删除">×</span>
               </div>
             </div>
@@ -1190,7 +1224,7 @@
   </script>
 
   <script src="/static/js/nio-client.js"></script>
-  <script src="/static/js/remote.js?v=3"></script>
+  <script src="/static/js/remote.js?v=4"></script>
 
   <script>
     // Extend Vue app for tabs

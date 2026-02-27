@@ -2190,8 +2190,9 @@ window.app = new Vue({
         data: JSON.stringify({ text: phrase })
       }).done(function(response) {
         self.updateCommandLatency(Date.now() - startTime);
-        console.log('短语发送成功:', phrase);
+        $.notify('已发送: ' + (phrase.length > 20 ? phrase.substring(0, 20) + '...' : phrase), 'success');
       }).fail(function(err) {
+        $.notify('发送失败', 'error');
         console.log('短语发送失败:', err);
       });
     },
